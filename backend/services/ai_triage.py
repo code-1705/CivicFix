@@ -60,7 +60,7 @@ def process_complaint_task(complaint_id: str, ward: str, lat: float, lng: float,
     for mt in master_tickets:
         if mt.get("category") == ai_result["department"] and mt.get("status") != "resolved":
             distance = calculate_distance(lat, lng, mt.get("lat"), mt.get("lng"))
-            if distance <= 30: # 30 meters threshold
+            if distance <= 100: # 100 meters threshold for hackathon demo
                 matched_ticket = mt
                 break
             
