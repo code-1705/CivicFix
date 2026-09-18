@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from routers import complaints, officers
+
 app = FastAPI(title="Civic Issue Tracker API")
 
 # Configure CORS for frontend access
@@ -15,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(complaints.router, tags=["Citizens"])
+app.include_router(officers.router, tags=["Officers"])
 
 @app.get("/")
 def read_root():
