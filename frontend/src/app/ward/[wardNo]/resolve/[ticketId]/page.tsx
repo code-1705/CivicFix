@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import { Camera, MapPin, UploadCloud, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Camera, MapPin, Loader2, AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function ResolveTicketPage() {
@@ -21,13 +21,11 @@ export default function ResolveTicketPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Auth check
     const token = localStorage.getItem("officer_token");
     if (!token) {
       router.push("/login");
     }
 
-    // Get location
     setIsLocating(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -40,7 +38,7 @@ export default function ResolveTicketPage() {
         },
         (err) => {
           console.error(err);
-          setError("Failed to get location. GPS is required for geofenced resolution.");
+          setError("Failed to get location. GPS is required.");
           setIsLocating(false);
         }
       );
@@ -81,12 +79,11 @@ export default function ResolveTicketPage() {
         },
       });
 
-      // Redirect back to dashboard on success
       router.push(`/ward/${params.wardNo}`);
     } catch (err: any) {
       console.error(err);
       if (err.response?.status === 400) {
-        setError(err.response.data.detail); // Geofence error
+        setError(err.response.data.detail);
       } else {
         setError("Failed to mark as resolved.");
       }
@@ -95,99 +92,106 @@ export default function ResolveTicketPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0f172a] text-slate-100 p-6 flex flex-col max-w-md mx-auto">
-      <header className="mb-6 mt-2">
-        <Link href={`/ward/${params.wardNo}`} className="inline-flex items-center text-slate-400 hover:text-white mb-4 transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
-        </Link>
-        <h1 className="text-2xl font-bold">Resolve Ticket</h1>
-        <p className="text-sm text-slate-400 font-mono mt-1">{params.ticketId}</p>
-      </header>
+    <div className="min-h-screen bg-[#f5f6f2]">
+      <main className="text-slate-800 p-4 sm:p-6 flex flex-col max-w-md mx-auto min-h-screen">
+        <header className="mb-8 mt-4">
+          <Link href={`/ward/${params.wardNo}`} className="inline-flex items-center text-slate-500 hover:text-slate-700 mb-4 font-medium transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Dashboard
+          </Link>
+          <h1 className="text-2xl font-extrabold text-[#1b4332]">Resolve Ticket</h1>
+          <p className="text-sm text-slate-500 font-mono mt-1 px-1 tracking-tight">{params.ticketId}</p>
+        </header>
 
-      <div className="flex-1 flex flex-col gap-6">
-        
-        {/* Photo Upload Box */}
-        <div 
-          className="relative group cursor-pointer border-2 border-dashed border-slate-600 rounded-2xl bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden flex flex-col items-center justify-center h-64 shadow-inner"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {preview ? (
-            <img src={preview} alt="Proof Preview" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
-          ) : (
-            <div className="flex flex-col items-center gap-3 text-slate-400">
-              <div className="p-4 bg-emerald-500/20 rounded-full text-emerald-400">
-                <Camera className="w-8 h-8" />
+        <div className="flex-1 flex flex-col">
+          
+          {/* Photo Upload Box */}
+          <div 
+            className="relative group cursor-pointer border-[1.5px] border-dashed border-slate-300 rounded-3xl bg-white hover:bg-slate-50 transition-all overflow-hidden flex flex-col items-center justify-center p-8 mb-8 shadow-sm h-64"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {preview ? (
+              <img src={preview} alt="Proof Preview" className="w-full h-full object-cover absolute inset-0 opacity-90 group-hover:opacity-100" />
+            ) : (
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-[#e4ede5] rounded-full flex items-center justify-center mb-4">
+                  <Camera className="w-6 h-6 text-[#1b4332]" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">Capture "After" Photo</h3>
+                <p className="text-sm text-slate-500 mt-2">Required proof of resolution</p>
               </div>
-              <span className="font-medium">Capture "After" Photo</span>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+            />
+          </div>
+
+          {/* GPS Verification Box */}
+          <div className="mb-6">
+            <h4 className="text-[13px] font-bold text-slate-600 mb-2 px-1">Geofence Check</h4>
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center shadow-sm">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mr-4 shrink-0">
+                {isLocating ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" /> : <MapPin className="w-6 h-6 text-blue-600" />}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-slate-800 text-[15px]">Coordinates</h3>
+                {isLocating ? (
+                  <p className="text-xs text-slate-500 mt-0.5">Verifying...</p>
+                ) : location ? (
+                  <p className="text-xs text-emerald-600 font-medium mt-0.5">Verified ({location.lat.toFixed(4)}, {location.lng.toFixed(4)})</p>
+                ) : (
+                  <p className="text-xs text-red-500 mt-0.5">GPS Required</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Hackathon Override Toggle */}
+          <div className="flex items-center justify-between bg-amber-50/50 p-4 rounded-2xl border border-amber-200/50 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <span className="text-sm font-bold text-amber-800">Demo Override</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={override} onChange={() => setOverride(!override)} />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3 text-red-600">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <p className="text-sm font-medium">{error}</p>
             </div>
           )}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImageChange}
-          />
-        </div>
 
-        {/* GPS Verification Box */}
-        <div className="bg-slate-800 rounded-xl p-4 flex items-center gap-4 border border-slate-700 shadow-md">
-          <div className="p-3 bg-blue-500/20 rounded-full text-blue-400 shrink-0">
-            {isLocating ? <Loader2 className="w-6 h-6 animate-spin" /> : <MapPin className="w-6 h-6" />}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-sm">Geofence Check</h3>
-            {isLocating ? (
-              <p className="text-xs text-slate-400">Verifying coordinates...</p>
-            ) : location ? (
-              <p className="text-xs text-emerald-400">Verified ({location.lat.toFixed(4)}, {location.lng.toFixed(4)})</p>
-            ) : (
-              <p className="text-xs text-red-400">GPS Required</p>
-            )}
+          <div className="mt-auto pt-2 pb-6">
+            <button
+              onClick={handleResolve}
+              disabled={isSubmitting || !image || !location}
+              className="w-full bg-[#1b4332] hover:bg-[#133023] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Mark as Resolved <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
           </div>
         </div>
-
-        {/* Hackathon Override Toggle */}
-        <div className="flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium text-amber-100">Demo Mode: Override Geofence</span>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" checked={override} onChange={() => setOverride(!override)} />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-          </label>
-        </div>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 text-red-400">
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-            <p className="text-sm font-medium">{error}</p>
-          </div>
-        )}
-
-        <div className="mt-auto pt-6">
-          <button
-            onClick={handleResolve}
-            disabled={isSubmitting || !image || !location}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <UploadCloud className="w-5 h-5" />
-                Mark as Resolved
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
