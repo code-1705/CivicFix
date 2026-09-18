@@ -2,12 +2,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import db
 from dotenv import load_dotenv
+from routers import complaints, officers
+from services.escalation import escalation_engine
+import asyncio
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
-from routers import complaints, officers
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the escalation engine as a background task
+    task = asyncio.create_task(escalation_engine())
+    yield
+    # Cancel task on shutdown
+    task.cancel()
 
-app = FastAPI(title="Civic Issue Tracker API")
+app = FastAPI(title="Civic Issue Tracker API", lifespan=lifespan)
 
 # Configure CORS for frontend access
 app.add_middleware(

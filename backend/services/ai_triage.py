@@ -46,25 +46,31 @@ def process_complaint_task(complaint_id: str, ward: str, lat: float, lng: float,
         **ai_result
     })
     
-    # 2. Geographic Clustering (30m Mock Logic)
-    # Check if there is an existing master ticket in this ward with same category
+    # 2. Geographic Clustering (30m Haversine Logic)
+    import math
+    from datetime import datetime, timedelta, timezone
+
+    def calculate_distance(lat1, lon1, lat2, lon2):
+        # Rough meters conversion for small distances (Haversine approximation)
+        return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2) * 111139
+
     master_tickets = db.get_master_tickets_by_ward(ward)
     matched_ticket = None
     
     for mt in master_tickets:
         if mt.get("category") == ai_result["department"] and mt.get("status") != "resolved":
-            # For hackathon, we assume it's within 30m if it's the same ward & category
-            matched_ticket = mt
-            break
+            distance = calculate_distance(lat, lng, mt.get("lat"), mt.get("lng"))
+            if distance <= 30: # 30 meters threshold
+                matched_ticket = mt
+                break
             
     if matched_ticket:
         mt_id = matched_ticket["master_ticket_id"]
         print(f"[{complaint_id}] Clustered into existing Master Ticket {mt_id}")
-        # Append and increment
-        new_impact = matched_ticket.get("impact_count", 1) + 1
-        # Update Master ticket (In mock DB this requires dict update, in DynamoDB it's an update expression)
+        
+        # In Mock DB update
         if db.use_mock:
-            db._mock_master_tickets[mt_id]["impact_count"] = new_impact
+            db._mock_master_tickets[mt_id]["impact_count"] = matched_ticket.get("impact_count", 1) + 1
             if "complaint_ids" not in db._mock_master_tickets[mt_id]:
                 db._mock_master_tickets[mt_id]["complaint_ids"] = []
             db._mock_master_tickets[mt_id]["complaint_ids"].append(complaint_id)
@@ -72,15 +78,27 @@ def process_complaint_task(complaint_id: str, ward: str, lat: float, lng: float,
         db.update_complaint(complaint_id, {"master_ticket_id": mt_id})
     else:
         print(f"[{complaint_id}] Creating NEW Master Ticket")
+        
+        # Calculate SLA deadline based on urgency tier
+        tier = ai_result["urgency_tier"]
+        sla_hours = 72 # default
+        if tier == 5: sla_hours = 4
+        elif tier == 4: sla_hours = 12
+        elif tier == 3: sla_hours = 24
+        
+        sla_deadline = (datetime.now(timezone.utc) + timedelta(hours=sla_hours)).isoformat()
+        
         mt_data = {
             "ward": ward,
             "lat": lat,
             "lng": lng,
             "category": ai_result["department"],
-            "severity": "high" if ai_result["urgency_tier"] >= 4 else "medium",
+            "severity": "high" if tier >= 4 else "medium",
             "status": "open",
             "assigned_to": f"ward_officer_{ward}",
-            "complaint_ids": [complaint_id]
+            "assigned_level": 1, # 1: Ward Officer, 2: Ward Exec, 3: Zonal
+            "complaint_ids": [complaint_id],
+            "sla_deadline": sla_deadline
         }
         mt_id = db.create_master_ticket(mt_data)
         db.update_complaint(complaint_id, {"master_ticket_id": mt_id})
