@@ -168,6 +168,40 @@ export default function StatusPage() {
               <p className="text-slate-500 text-xs mt-0.5">Coords: {Number(complaint.lat).toFixed(4)}, {Number(complaint.lng).toFixed(4)}</p>
             </div>
           </div>
+
+          {/* Photo Gallery Box */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-slate-800 mb-4 text-[15px]">Evidence Gallery</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Before (Reported)</span>
+                <div className="w-full h-36 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
+                  {/* Using an Unsplash placeholder for the hackathon demo since we didn't wire up S3 yet */}
+                  <img src="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=400" alt="Before" className="w-full h-full object-cover" />
+                </div>
+              </div>
+              
+              {isResolved ? (
+                <div>
+                  <span className="block text-[11px] font-bold text-emerald-600 mb-2 uppercase tracking-wider">After (Resolved)</span>
+                  <div className="w-full h-36 bg-slate-100 rounded-2xl overflow-hidden border-2 border-emerald-400 relative shadow-inner">
+                    <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1 z-10 shadow-md">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    {/* Placeholder for resolved image */}
+                    <img src="https://images.unsplash.com/photo-1584464457692-04e38e6f1406?auto=format&fit=crop&q=80&w=400" alt="After" className="w-full h-full object-cover" />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <span className="block text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">After (Pending)</span>
+                  <div className="w-full h-36 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center shadow-inner">
+                    <p className="text-xs text-slate-400 font-bold text-center px-4 leading-relaxed">Waiting for<br/>ward officer</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>
