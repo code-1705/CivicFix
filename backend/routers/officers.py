@@ -110,10 +110,12 @@ async def resolve_ticket(
     # Update Status
     resolved_time = datetime.now(timezone.utc).isoformat()
     if db.use_mock:
-        db._mock_master_tickets[master_ticket_id]["status"] = "resolved"
-        db._mock_master_tickets[master_ticket_id]["resolved_at"] = resolved_time
-        db._mock_master_tickets[master_ticket_id]["resolved_image_url"] = primary_image_url
-        db._mock_master_tickets[master_ticket_id]["resolved_image_urls"] = resolved_image_urls
+        db.update_master_ticket(master_ticket_id, {
+            "status": "resolved",
+            "resolved_at": resolved_time,
+            "resolved_image_url": primary_image_url,
+            "resolved_image_urls": resolved_image_urls
+        })
         
         # Also update associated complaints and notify citizens via SMS
         for cid in db._mock_master_tickets[master_ticket_id].get("complaint_ids", []):

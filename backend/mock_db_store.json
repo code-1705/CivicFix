@@ -58,7 +58,7 @@
       "lng": 77.60628668470217,
       "category": "Public Works",
       "severity": "high",
-      "status": "open",
+      "status": "resolved",
       "assigned_to": "ward_officer_151",
       "assigned_level": 1,
       "complaint_ids": [
@@ -67,7 +67,14 @@
       "sla_deadline": "2026-09-20T08:38:55.223552+00:00",
       "master_ticket_id": "MT-A175F5",
       "created_at": "2026-09-19T20:38:55.223552+00:00",
-      "impact_count": 1
+      "impact_count": 1,
+      "resolved_at": "2026-09-19T21:17:46.028586+00:00",
+      "resolved_image_url": "/uploads/resolved_28b698c3c4.jpg",
+      "resolved_image_urls": [
+        "/uploads/resolved_28b698c3c4.jpg",
+        "/uploads/resolved_d1f72172d9.jpg",
+        "/uploads/resolved_24dbba1263.jpg"
+      ]
     }
   }
 }
