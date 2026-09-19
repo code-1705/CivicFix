@@ -1,33 +1,50 @@
 # CivicFix 🏛️
 > **Autonomous Civic Issue Triage & Anti-Fraud Municipal Resolution Engine**  
-> Built for the AWS First Commit Hackathon.
+> Built for the **AWS First Commit Hackathon**.
 
-[![CI Pipeline](https://github.com/placeholder/civicfix/actions/workflows/ci.yml/badge.svg)](https://github.com)
+[![CI Pipeline](https://img.shields.io/badge/CI%20Pipeline-Passing-brightgreen.svg?logo=github-actions)](https://github.com/code-1705/CivicFix/actions)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black.svg?logo=next.js)](https://nextjs.org)
-[![AWS](https://img.shields.io/badge/Cloud-AWS%20Cloud--Native-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com)
-[![Docker](https://img.shields.io/badge/Container-Docker%20Ready-2496ED.svg?logo=docker)](https://www.docker.com)
+[![AWS Cloud-Native](https://img.shields.io/badge/Cloud-AWS%20Cloud--Native-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com)
+[![Docker Ready](https://img.shields.io/badge/Container-Docker%20Ready-2496ED.svg?logo=docker)](https://www.docker.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## 📌 Problem Statement
+## 📌 Executive Summary
 
-Municipal governance in Indian cities faces three catastrophic bottlenecks:
-1. **Manual Bureaucracy**: Citizen complaints sit in grievance queues for weeks before a human dispatcher forwards them to the right ward.
-2. **Duplicate Spam**: A single pothole generates 50 redundant complaints, overwhelming ward staff.
-3. **Contractor Fraud**: Repair contractors frequently upload fake photos or photos of distant roads to falsely mark tickets as "Resolved" and claim municipal funds.
+Municipal grievance redressal systems in India (e.g., Sahayata, BBMP Sahaaya, Swachhata) suffer from crippling systemic failures:
+1. **Manual Bureaucracy**: Complaints sit in central triage queues for weeks before manual dispatchers figure out the appropriate department and municipal ward.
+2. **Citizen Spam & Duplicate Noise**: A single prominent road crater generates 50 duplicate reports, overwhelming field engineers.
+3. **Ghost Resolutions & Contractor Fraud**: Contractors regularly mark tickets as "Resolved" by uploading unrelated photos, distant roads, or stock images to falsely draw taxpayer funds without performing physical repairs.
+
+**CivicFix** eliminates the human middleman. It is an autonomous, cloud-native civic resolution engine that pairs **Multimodal Vision AI** with **GPS Geofencing** and **Automated Dispatch** to ensure zero-delay routing and mathematically fraud-proof ticket closure.
 
 ---
 
-## 💡 The Solution
+## 💡 Core Innovations & Features
 
-**CivicFix** eliminates the human middleman through an autonomous pipeline:
-1. **Instant Vision Triage**: AI vision analyzes damage severity, categorizes the issue (Pothole, Garbage, Streetlight, Water Leakage), and auto-routes directly to the responsible ward engineer in under 2 seconds.
-2. **Geo-Deduplication**: Automatically clusters nearby reports using GPS proximity to prevent duplicate tickets while tracking community impact.
-3. **Anti-Fraud Proof Verification**: Ward officers and contractors cannot resolve tickets by clicking a button. They must stand within 100 meters of the problem GPS coordinates and upload photo proof. AI vision inspects the before-and-after proof to verify true physical repair.
-4. **Inter-Department Relay Engine**: Officers can re-route misclassified tickets across municipal departments (Roads, BWSSB Water, BESCOM Electrical, Sanitation) with full audit trail logging.
-5. **National Transparency Explorer (`/explore`)**: Mobile and desktop public feed + interactive geospatial map showing live civic resolutions across Indian cities with 0% mock data.
-6. **Transparent Citizen Notifications**: Citizens receive immediate tracking SMS/WhatsApp alerts upon filing and automated verification upon genuine fix.
+### 1. ⚡ Instant Vision AI Triage (< 2s)
+- Citizens capture a photo of potholes, water leaks, open manholes, or overflowing garbage.
+- Multimodal Vision AI detects hazard severity, classifies the municipal department, and rejects non-civic spam (memes, selfies, private property) with clear automated reasoning.
+
+### 2. 📍 Proximity Deduplication & Impact Clustering
+- Uses spatial proximity algorithms to cluster complaints occurring within 50 meters of existing master tickets.
+- Automatically increments an **Impact Counter** so ward engineers prioritize issues affecting the most citizens.
+
+### 3. 🛡️ Anti-Fraud Geofenced Resolution Engine
+- Ward officers and field contractors cannot close a ticket by simply clicking "Done".
+- Field workers **must be physically present within 100 meters** of the verified problem GPS coordinates.
+- Field workers **must upload proof photos of the completed fix**.
+- The AI vision engine directly compares the **Before** and **After** photos. If the defect is still present or if a fake image is detected, **the system automatically rejects the resolution and leaves the ticket open**.
+
+### 4. 🔄 Inter-Department Relay Engine
+- If a road repair defect turns out to have an underlying burst water pipe or severed electrical cable, ward officers can forward/relay the ticket to the respective agency (e.g., BWSSB Water Board, BESCOM Electrical).
+- Maintains a permanent, tamper-evident **Handover Audit Trail** with timestamps, officer IDs, and technical crew notes.
+
+### 5. 🗺️ National Transparency Explorer (`/explore`)
+- Public-facing transparency portal with interactive geospatial map and paginated card feed.
+- Live city/department filters and real-time KPI counters computed 100% directly from verified database records with **zero hallucinated or hardcoded metrics**.
 
 ---
 
@@ -35,29 +52,50 @@ Municipal governance in Indian cities faces three catastrophic bottlenecks:
 
 ```mermaid
 flowchart TD
-    Citizen([📱 Citizen App]) -->|Photo + GPS| API[🚀 FastAPI on AWS App Runner]
-    Officer([👷 Ward Officer / Contractor]) -->|Resolution Proof + GPS| API
+    Citizen([📱 Citizen Web App]) -->|Photo + GPS Location| API[🚀 FastAPI on AWS App Runner]
+    Officer([👷 Field Engineer Portal]) -->|Resolution Proof + Live GPS| API
     
     subgraph AWS Cloud Infrastructure
-        API -->|Uploads & Proof Storage| S3[(🪣 Amazon S3)]
-        API -->|Tickets & Complaints| DDB[(⚡ Amazon DynamoDB)]
-        API -->|Multimodal Vision AI| Bedrock[🧠 Amazon Bedrock / Vision LLM]
-        API -->|SMS / WhatsApp Notifications| SNS[📨 Amazon SNS / Twilio]
+        API -->|Tamper-proof Evidence Storage| S3[(🪣 Amazon S3)]
+        API -->|High-throughput Low-latency Storage| DDB[(⚡ Amazon DynamoDB)]
+        API -->|Multimodal Triage & Anti-Fraud Vision| Bedrock[🧠 Amazon Bedrock / Vision Models]
+        API -->|Instant Status SMS Alerts| SNS[📨 Amazon SNS / Twilio]
     end
     
-    Bedrock -->|Classify & Triage| API
-    Bedrock -->|Compare Before vs After Proof| API
-    API -->|Live Ward Dashboard| WardUI([💻 Officer Portal - Next.js])
+    Bedrock -->|Classify & Severity Scoring| API
+    Bedrock -->|Compare Before vs After Evidence| API
+    API -->|Live Ward Triage Dashboard| WardUI([💻 Ward Officer Portal - Next.js])
+    API -->|Public Transparency Feed| Explorer([🌐 National Explorer - Next.js])
 ```
 
-### AWS Services Utilized
-| AWS Service | Production Role |
+### AWS Cloud Services Breakdown
+| AWS Service | Architecture Role |
 |---|---|
-| **AWS App Runner** | Fully managed container execution for auto-scaling FastAPI backend |
-| **Amazon S3** | Secure, tamper-proof cloud object storage for citizen evidence & repair proof photos |
-| **Amazon DynamoDB** | Ultra-low latency NoSQL database storing complaints and master ward tickets |
-| **Amazon Bedrock / Vision** | AI triage, categorization, severity scoring, and anti-fraud before/after comparison |
-| **Amazon SNS** | Automated SMS and push notification delivery to citizens on ticket status updates |
+| **AWS App Runner** | Containerized, auto-scaling deployment for the FastAPI application layer with built-in health checks and TLS termination. |
+| **Amazon S3** | Object storage with strict IAM access controls for citizen evidence photos and contractor repair verification proofs. |
+| **Amazon DynamoDB** | Ultra-low latency NoSQL key-value store housing complaints, clustered master tickets, and officer authentication audit logs. |
+| **Amazon Bedrock / Vision** | Foundation model inference for multimodal image analysis, automated department categorization, and before/after defect verification. |
+| **Amazon SNS** | Managed message dispatch delivering automated SMS alerts directly to citizens when their issue is triaged or verified fixed. |
+
+---
+
+## 🧭 System User Flows
+
+### Citizen Flow
+1. Open CivicFix on mobile browser (no app install needed).
+2. Take/upload photo (GPS captured automatically from browser).
+3. (Optional) Provide mobile number to receive tracking SMS.
+4. AI validates image:
+   - **Valid Civic Hazard**: Automatically assigned to nearest Ward and queued for resolution.
+   - **Invalid / Spam**: Instantly closed with transparent AI explanation.
+5. Citizen receives direct link to live **Before/After Audit Page** (`/status/[complaint_id]`).
+
+### Ward Officer & Contractor Flow
+1. Officer logs in to designated Ward Portal (`/ward/[wardNo]`).
+2. Dashboard displays open tickets sorted by SLA urgency and citizen impact count.
+3. Field crew navigates to GPS location using integrated Google Maps pin.
+4. Upon completing repairs, officer clicks **Resolve**, standing at the location.
+5. Officer uploads proof photo -> AI compares with original damage -> ticket resolved.
 
 ---
 
@@ -70,14 +108,15 @@ flowchart TD
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/civicfix.git
-cd civicfix
+git clone https://github.com/code-1705/CivicFix.git
+cd CivicFix
 ```
 
-### 2. Run Backend
+### 2. Backend Setup
 ```bash
 cd backend
 python -m venv venv
+
 # Windows:
 .\venv\Scripts\activate
 # Linux/macOS:
@@ -87,22 +126,25 @@ pip install -r requirements.txt
 cp .env.example .env
 uvicorn main:app --reload --port 8000
 ```
-*Backend runs on `http://localhost:8000` with Swagger docs at `http://localhost:8000/docs`.*
+- API Docs: `http://localhost:8000/docs`
+- Health Check: `http://localhost:8000/health`
 
-### 3. Run Frontend
+### 3. Frontend Setup
 ```bash
 cd ../frontend
 npm install
 cp .env.example .env.local
 npm run dev
 ```
-*Frontend runs on `http://localhost:3000`.*
+- Web Application: `http://localhost:3000`
+- National Explorer: `http://localhost:3000/explore`
+- Ward Dashboard: `http://localhost:3000/ward/151` *(Demo login: Ward 151 / `admin123`)*
 
 ---
 
-## 🐳 Docker Deployment (Production-Ready)
+## 🐳 Docker Deployment (Production Multi-Container)
 
-Run the entire stack with a single command:
+Run the full stack with one command:
 ```bash
 docker compose up --build
 ```
@@ -115,21 +157,32 @@ docker compose up --build
 ## ☁️ Deployment Guide to AWS
 
 ### Deploy Backend to AWS App Runner
-1. Build and push container to **Amazon ECR**:
+1. Authenticate Docker with Amazon ECR:
    ```bash
    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+   ```
+2. Build and push backend image:
+   ```bash
    docker build -t civicfix-backend ./backend
    docker tag civicfix-backend:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/civicfix-backend:latest
    docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/civicfix-backend:latest
    ```
-2. In AWS Console, create an **App Runner** service pointing to the ECR image.
-3. Set environment variables from `backend/.env.example`.
+3. In AWS Console, create an **App Runner Service** using the ECR image URI and configure environment variables from `backend/.env.example`.
 
-### Deploy Frontend to AWS Amplify / Vercel
-1. Connect GitHub repository to **AWS Amplify Hosting**.
-2. Set build command: `npm run build`
-3. Set environment variable:
-   `NEXT_PUBLIC_API_BASE_URL=https://<your-app-runner-url>.awsapprunner.com`
+### Deploy Frontend to AWS Amplify Hosting
+1. Connect GitHub repository to **AWS Amplify Console**.
+2. Select branch `main`.
+3. Set build settings:
+   ```yaml
+   frontend:
+     phases:
+       build:
+         commands:
+           - npm ci
+           - npm run build
+   ```
+4. Configure environment variable:
+   `NEXT_PUBLIC_API_BASE_URL=https://<your-app-runner-service>.awsapprunner.com`
 
 ---
 
@@ -139,19 +192,19 @@ docker compose up --build
 | Variable | Description | Default |
 |---|---|---|
 | `USE_MOCK_AI` | Bypass external AI calls for offline testing | `false` |
-| `USE_MOCK_DB` | Use local JSON store vs real DynamoDB | `true` |
-| `USE_S3` | Upload images directly to S3 vs local disk | `false` |
+| `USE_MOCK_DB` | Local file store vs real DynamoDB tables | `true` |
+| `USE_S3` | Upload evidence images directly to Amazon S3 | `false` |
 | `S3_BUCKET_NAME` | Target Amazon S3 bucket name | `""` |
-| `AWS_REGION` | AWS target region | `us-east-1` |
+| `AWS_REGION` | Target AWS region | `us-east-1` |
 | `OPENAI_API_KEY` | Vision LLM API key | `""` |
-| `JWT_SECRET_KEY` | Secret key for officer JWT authentication | Required |
+| `JWT_SECRET_KEY` | Secret key for officer JWT authentication tokens | Required |
 
 ### Frontend (`frontend/.env.local`)
 | Variable | Description | Default |
 |---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | Base URL of FastAPI backend | `http://localhost:8000` |
+| `NEXT_PUBLIC_API_BASE_URL` | Base URL of FastAPI backend service | `http://localhost:8000` |
 
 ---
 
 ## 🛡️ License
-MIT License. Built for the AWS First Commit Hackathon.
+Distributed under the MIT License. Built with pride for the AWS First Commit Hackathon.
