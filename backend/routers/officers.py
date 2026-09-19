@@ -139,3 +139,26 @@ async def resolve_ticket(
         "resolved_image_url": primary_image_url,
         "resolved_image_urls": resolved_image_urls
     }
+
+@router.post("/tickets/{master_ticket_id}/relay")
+async def relay_ward_ticket(
+    master_ticket_id: str,
+    to_department: str = Form(...),
+    notes: Optional[str] = Form(None),
+    current_officer: dict = Depends(get_current_officer)
+):
+    ticket = db.relay_ticket(
+        master_ticket_id=master_ticket_id,
+        to_department=to_department,
+        officer_id=current_officer.get("officer_id", current_officer.get("sub", "officer")),
+        notes=notes
+    )
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Master ticket not found")
+    return {
+        "status": "relayed",
+        "master_ticket_id": master_ticket_id,
+        "assigned_department": ticket.get("assigned_department"),
+        "relay_history": ticket.get("relay_history", [])
+    }
+

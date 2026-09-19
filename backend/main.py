@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import db
 from dotenv import load_dotenv
-from routers import complaints, officers
+from routers import complaints, officers, public
 from services.escalation import escalation_engine
 import asyncio
 import os
@@ -66,6 +66,7 @@ async def log_requests_middleware(request: Request, call_next):
 
 app.include_router(complaints.router, tags=["Citizens"])
 app.include_router(officers.router, tags=["Officers"])
+app.include_router(public.router)
 
 @app.get("/")
 def read_root():

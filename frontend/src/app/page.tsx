@@ -3,9 +3,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Camera, MapPin, Loader2, AlertCircle, ArrowRight,
-  Search, RefreshCw, X, CheckCircle2, Copy
+  Search, RefreshCw, X, CheckCircle2, Copy, Globe, Building2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
 import { API_BASE_URL } from "@/lib/api";
 
@@ -187,8 +188,27 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f5f6f2]">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 bg-[#f5f6f2]/90 backdrop-blur-sm border-b border-slate-200/60 px-4 py-3 flex items-center justify-center">
-        <h1 className="text-xl font-extrabold text-[#1b4332] tracking-tight">CivicFix</h1>
+      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="text-xl font-extrabold text-[#1b4332] tracking-tight flex items-center gap-1.5">
+          <span className="w-7 h-7 rounded-lg bg-[#1b4332] text-white flex items-center justify-center text-xs font-black">CF</span>
+          <span>CivicFix</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/explore"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#1b4332]" />
+            <span>National Feed</span>
+          </Link>
+          <Link
+            href="/login"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 font-bold text-xs transition-colors"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Officer Login</span>
+          </Link>
+        </div>
       </header>
 
       <main className="text-slate-800 px-4 pt-4 pb-24 flex flex-col max-w-lg mx-auto lg:max-w-4xl">

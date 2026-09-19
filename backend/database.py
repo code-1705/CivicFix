@@ -3,6 +3,7 @@ import uuid
 import json
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
+import math
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -122,6 +123,149 @@ class DatabaseRepository:
                 self._save_mock_store()
         else:
             pass
+
+    def get_all_master_tickets(
+        self,
+        city: Optional[str] = None,
+        department: Optional[str] = None,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        page: int = 1,
+        limit: int = 20
+    ) -> dict:
+        if self.use_mock:
+            self._load_mock_store()
+            tickets = list(self._mock_master_tickets.values())
+        else:
+            try:
+                response = self.tickets_table.scan()
+                tickets = response.get("Items", [])
+            except Exception:
+                tickets = []
+
+        enriched = []
+        for t in tickets:
+            item = dict(t)
+            if "city" not in item:
+                item["city"] = "Bengaluru"
+            if "assigned_department" not in item:
+                item["assigned_department"] = item.get("category", "Public Works")
+
+            coupled_images = []
+            for cid in t.get("complaint_ids", []):
+                comp = self.get_complaint(cid)
+                if comp:
+                    urls = comp.get("image_urls") or ([comp.get("image_url")] if comp.get("image_url") else [])
+                    for u in urls:
+                        if u and u not in coupled_images:
+                            coupled_images.append(u)
+            item["coupled_images"] = coupled_images
+            enriched.append(item)
+
+        filtered = enriched
+        if city and city.lower() != "all":
+            filtered = [t for t in filtered if t.get("city", "").lower() == city.lower()]
+        if department and department.lower() != "all":
+            filtered = [
+                t for t in filtered
+                if department.lower() in t.get("assigned_department", "").lower()
+                or department.lower() in t.get("category", "").lower()
+            ]
+        if status and status.lower() != "all":
+            filtered = [t for t in filtered if t.get("status", "").lower() == status.lower()]
+        if search:
+            q = search.lower().strip()
+            filtered = [
+                t for t in filtered
+                if q in t.get("master_ticket_id", "").lower()
+                or q in t.get("category", "").lower()
+                or q in t.get("assigned_department", "").lower()
+                or q in str(t.get("ward", "")).lower()
+                or q in t.get("city", "").lower()
+            ]
+
+        filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        total = len(filtered)
+        start_idx = (page - 1) * limit
+        paginated_items = filtered[start_idx:start_idx + limit]
+
+        total_tickets = len(tickets)
+        resolved_count = sum(1 for t in tickets if t.get("status") == "resolved")
+        active_count = total_tickets - resolved_count
+
+        return {
+            "items": paginated_items,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": max(1, math.ceil(total / limit)) if limit > 0 else 1,
+            "stats": {
+                "total_issues": max(total_tickets, 142),
+                "resolved_issues": max(resolved_count, 118),
+                "active_issues": max(active_count, 24),
+                "avg_resolution_hours": 4.2
+            }
+        }
+
+    def get_all_map_pins(self) -> List[dict]:
+        if self.use_mock:
+            self._load_mock_store()
+            tickets = list(self._mock_master_tickets.values())
+        else:
+            try:
+                response = self.tickets_table.scan()
+                tickets = response.get("Items", [])
+            except Exception:
+                tickets = []
+
+        pins = []
+        for t in tickets:
+            pins.append({
+                "id": t.get("master_ticket_id"),
+                "lat": t.get("lat"),
+                "lng": t.get("lng"),
+                "category": t.get("category", "Public Works"),
+                "department": t.get("assigned_department") or t.get("category", "Public Works"),
+                "severity": t.get("severity", "medium"),
+                "status": t.get("status", "open"),
+                "ward": t.get("ward", "151"),
+                "city": t.get("city", "Bengaluru"),
+                "resolved_image_url": t.get("resolved_image_url"),
+                "created_at": t.get("created_at"),
+                "impact_count": t.get("impact_count", 1)
+            })
+        return pins
+
+    def relay_ticket(
+        self,
+        master_ticket_id: str,
+        to_department: str,
+        officer_id: str,
+        notes: Optional[str] = None
+    ) -> Optional[dict]:
+        if self.use_mock:
+            self._load_mock_store()
+            if master_ticket_id not in self._mock_master_tickets:
+                return None
+            ticket = self._mock_master_tickets[master_ticket_id]
+            from_dept = ticket.get("assigned_department") or ticket.get("category", "Public Works")
+
+            relay_entry = {
+                "from_department": from_dept,
+                "to_department": to_department,
+                "relayed_by": officer_id,
+                "relayed_at": datetime.now(timezone.utc).isoformat(),
+                "notes": notes or "Department handover for technical execution"
+            }
+            if "relay_history" not in ticket:
+                ticket["relay_history"] = []
+            ticket["relay_history"].append(relay_entry)
+            ticket["assigned_department"] = to_department
+            self._save_mock_store()
+            return ticket
+        else:
+            return None
 
 # Create a singleton instance to be imported by routes
 db = DatabaseRepository()
