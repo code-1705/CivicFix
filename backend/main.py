@@ -76,7 +76,7 @@ from services.sms_service import send_sms
 
 @app.get("/sms/test")
 @app.post("/sms/test")
-def test_sms(to: str = "+919609903555", message: str = "Civic Issue Tracker: Test SMS notification via Twilio!"):
+def test_sms(to: str = "+919999999999", message: str = "Civic Issue Tracker: Test SMS notification via Twilio!"):
     success = send_sms(to, message)
     return {
         "success": success,
