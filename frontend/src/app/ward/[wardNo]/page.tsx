@@ -3,17 +3,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  MapPin, 
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  MapPin,
   LogOut,
   Camera,
-  Map,
   Users,
   Navigation,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Filter
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -26,9 +28,12 @@ interface Ticket {
   lat: number;
   lng: number;
   sla_deadline: string;
+  resolved_at?: string;
   complaint_ids: string[];
   coupled_images?: string[];
 }
+
+type FilterType = "all" | "open" | "breach" | "resolved";
 
 export default function OfficerDashboard() {
   const params = useParams();
@@ -38,6 +43,8 @@ export default function OfficerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchTickets = useCallback(async (silent = false) => {
     try {
@@ -45,21 +52,22 @@ export default function OfficerDashboard() {
       else setRefreshing(true);
 
       const token = localStorage.getItem("officer_token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      if (!token) { router.push("/login"); return; }
 
       const response = await axios.get(`http://localhost:8000/ward_complain/${params.wardNo}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const sorted = response.data.sort((a: Ticket, b: Ticket) => {
         if (a.status === "resolved" && b.status !== "resolved") return 1;
         if (a.status !== "resolved" && b.status === "resolved") return -1;
+        const aBreached = new Date(a.sla_deadline).getTime() < Date.now();
+        const bBreached = new Date(b.sla_deadline).getTime() < Date.now();
+        if (aBreached && !bBreached) return -1;
+        if (!aBreached && bBreached) return 1;
         return new Date(a.sla_deadline).getTime() - new Date(b.sla_deadline).getTime();
       });
-      
+
       setTickets(sorted);
       setLastRefreshed(new Date());
       setError(null);
@@ -77,17 +85,25 @@ export default function OfficerDashboard() {
 
   useEffect(() => {
     fetchTickets();
-    // Auto-refresh every 30 seconds
     const interval = setInterval(() => fetchTickets(true), 30000);
     return () => clearInterval(interval);
   }, [fetchTickets]);
 
-  const openTicketsCount = tickets.filter(t => t.status !== "resolved").length;
-  const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+  const now = Date.now();
+  const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+
+  const openCount = tickets.filter(t => t.status !== "resolved").length;
+  const breachCount = tickets.filter(t => t.status !== "resolved" && new Date(t.sla_deadline).getTime() < now).length;
   const resolvedTodayCount = tickets.filter(t =>
-    t.status === "resolved" && new Date((t as any).resolved_at || 0) >= todayMidnight
+    t.status === "resolved" && new Date(t.resolved_at || 0) >= todayMidnight
   ).length;
-  const breachCount = tickets.filter(t => t.status !== "resolved" && new Date(t.sla_deadline).getTime() < Date.now()).length;
+
+  const filtered = tickets.filter(t => {
+    if (filter === "open") return t.status !== "resolved";
+    if (filter === "breach") return t.status !== "resolved" && new Date(t.sla_deadline).getTime() < now;
+    if (filter === "resolved") return t.status === "resolved";
+    return true;
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("officer_token");
@@ -95,36 +111,48 @@ export default function OfficerDashboard() {
     router.push("/login");
   };
 
+  const formatSLA = (deadline: string) =>
+    new Date(deadline).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const getSeverityLabel = (s: string) =>
+    s === "high" ? "High" : s === "medium" ? "Medium" : "Low";
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f6f2] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1b4332]"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#1b4332]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f2] p-4 sm:p-8">
-      <main className="max-w-5xl mx-auto">
-        <header className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+    <div className="min-h-screen bg-[#f5f6f2]">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* ── Header ── */}
+        <header className="flex items-center justify-between mb-6 bg-white px-5 py-4 rounded-2xl border border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Ward {params.wardNo} Dashboard</h1>
-            <p className="text-slate-400 mt-1 text-xs font-medium">
-              {lastRefreshed ? `Last updated ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Loading...'}
+            <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">
+              Ward <span className="text-[#1b4332]">{params.wardNo}</span> Dashboard
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {lastRefreshed
+                ? `Updated ${lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                : "Loading..."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => fetchTickets(true)}
               disabled={refreshing}
-              className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 disabled:opacity-50"
-              title="Refresh tickets"
+              title="Refresh"
+              className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 disabled:opacity-40 transition-colors"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <button 
+            <button
               onClick={handleLogout}
-              className="p-2.5 bg-[#e4ede5] hover:bg-[#d0ded2] rounded-xl transition-colors text-[#1b4332] flex items-center gap-2 font-bold text-sm"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#e4ede5] hover:bg-[#d0ded2] rounded-xl text-[#1b4332] font-bold text-sm transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
@@ -132,119 +160,188 @@ export default function OfficerDashboard() {
           </div>
         </header>
 
-        {/* Metrics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
-              <Map className="w-6 h-6" />
+        {/* ── Metric Cards ── */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: "Open", value: openCount, color: "text-blue-600", bg: "bg-blue-50", icon: Clock },
+            { label: "SLA Breach", value: breachCount, color: "text-red-600", bg: "bg-red-50", icon: AlertTriangle },
+            { label: "Resolved Today", value: resolvedTodayCount, color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle2 },
+          ].map(({ label, value, color, bg, icon: Icon }) => (
+            <div key={label} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
+              <div className={`p-2 ${bg} rounded-xl shrink-0`}>
+                <Icon className={`w-5 h-5 ${color}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{label}</p>
+                <p className="text-2xl font-black text-slate-800">{value}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">Open Tickets</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{openTicketsCount}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-red-50 rounded-xl text-red-600">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">SLA Breached</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{breachCount}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">Resolved Today</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{resolvedTodayCount}</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 font-medium flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" /> {error}
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 font-medium flex items-center gap-2 text-sm">
+            <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
           </div>
         )}
 
-        {/* Mobile View: Cards */}
-        <div className="md:hidden space-y-4">
-          {tickets.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <div className="w-16 h-16 bg-[#e4ede5] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-8 h-8 text-[#1b4332]" />
-              </div>
-              <p className="font-bold text-slate-800">All clear!</p>
-              <p className="text-slate-500 text-sm mt-1">No open tickets in Ward {params.wardNo}.</p>
+        {/* ── Filter Tabs ── */}
+        <div className="flex items-center gap-1.5 mb-4 bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm w-fit">
+          <Filter className="w-4 h-4 text-slate-400 ml-2 shrink-0" />
+          {([
+            { key: "all", label: "All", count: tickets.length },
+            { key: "open", label: "Open", count: openCount },
+            { key: "breach", label: "Breached", count: breachCount },
+            { key: "resolved", label: "Resolved", count: tickets.length - openCount },
+          ] as { key: FilterType; label: string; count: number }[]).map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={clsx(
+                "text-xs font-bold px-3 py-1.5 rounded-xl transition-all",
+                filter === key
+                  ? "bg-[#1b4332] text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+              )}
+            >
+              {label}
+              <span className={clsx(
+                "ml-1.5 text-[10px] font-black rounded-full px-1.5 py-0.5",
+                filter === key ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+              )}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Empty State ── */}
+        {filtered.length === 0 && (
+          <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+            <div className="w-14 h-14 bg-[#e4ede5] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-7 h-7 text-[#1b4332]" />
             </div>
-          ) : (
-            tickets.map(ticket => {
-              const isResolved = ticket.status === "resolved";
-              const isBreached = !isResolved && new Date(ticket.sla_deadline).getTime() < Date.now();
-              const severity = ticket.severity || "medium";
-              const borderColor = isResolved ? "border-l-emerald-400" : isBreached ? "border-l-red-500" : severity === "high" ? "border-l-amber-500" : "border-l-slate-300";
-              
-              return (
-                <div key={ticket.master_ticket_id} className={clsx(
-                  "bg-white rounded-2xl p-5 border border-slate-200 shadow-sm border-l-4 transition-shadow hover:shadow-md",
+            <p className="font-bold text-slate-800">All clear!</p>
+            <p className="text-slate-500 text-sm mt-1">No tickets match this filter.</p>
+          </div>
+        )}
+
+        {/* ── Ticket List (unified card layout for all breakpoints) ── */}
+        <div className="space-y-3">
+          {filtered.map(ticket => {
+            const isResolved = ticket.status === "resolved";
+            const isBreached = !isResolved && new Date(ticket.sla_deadline).getTime() < now;
+            const isExpanded = expandedId === ticket.master_ticket_id;
+
+            const borderColor = isResolved
+              ? "border-l-emerald-400"
+              : isBreached
+              ? "border-l-red-500"
+              : ticket.severity === "high"
+              ? "border-l-amber-500"
+              : "border-l-slate-200";
+
+            return (
+              <div
+                key={ticket.master_ticket_id}
+                className={clsx(
+                  "bg-white rounded-2xl border border-slate-200 border-l-4 shadow-sm overflow-hidden transition-shadow hover:shadow-md",
                   borderColor,
-                  isBreached && "ring-1 ring-red-200"
-                )}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <span className="font-bold text-slate-800 text-lg">{ticket.category}</span>
-                      <p className="font-mono text-xs font-semibold text-slate-500 mt-1">{ticket.master_ticket_id}</p>
+                  isBreached && "ring-1 ring-red-100"
+                )}
+              >
+                {/* ── Card Header (always visible) ── */}
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Top row: category + badges */}
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-extrabold text-slate-800 text-[15px]">{ticket.category}</span>
+                        <span className={clsx(
+                          "text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full",
+                          isResolved
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : isBreached
+                            ? "bg-red-50 text-red-700 border border-red-200"
+                            : "bg-blue-50 text-blue-700 border border-blue-200"
+                        )}>
+                          {isResolved ? "Resolved" : isBreached ? "SLA Breached" : "Open"}
+                        </span>
+                        <span className={clsx(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                          ticket.severity === "high"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-slate-50 text-slate-500 border-slate-200"
+                        )}>
+                          {getSeverityLabel(ticket.severity)}
+                        </span>
+                      </div>
+                      {/* Ticket ID */}
+                      <p className="font-mono text-xs text-slate-400">{ticket.master_ticket_id}</p>
                     </div>
-                    <span className={clsx(
-                      "inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full",
-                      isResolved ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
-                      : "bg-blue-50 text-blue-600 border border-blue-200"
-                    )}>
-                      {isResolved ? "RESOLVED" : "OPEN"}
-                    </span>
+
+                    {/* Action button */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!isResolved && (
+                        <button
+                          onClick={() => router.push(`/ward/${params.wardNo}/resolve/${ticket.master_ticket_id}`)}
+                          className="bg-[#1b4332] hover:bg-[#133023] active:scale-95 text-white font-bold py-2 px-3 sm:px-4 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Resolve</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : ticket.master_ticket_id)}
+                        className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-500 transition-colors"
+                        aria-label="Toggle details"
+                      >
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 mb-4">
-                    <div className="flex items-center justify-between text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <div className="flex items-center text-slate-600">
-                        <MapPin className="w-4 h-4 mr-1.5 text-slate-400 shrink-0" />
-                        <span>{ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}</span>
-                      </div>
+                  {/* Info row: SLA + impact + location */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className={clsx("w-3.5 h-3.5 shrink-0", isResolved ? "text-slate-300" : isBreached ? "text-red-500" : "text-amber-500")} />
+                      <span className={clsx(
+                        "text-xs font-semibold",
+                        isResolved ? "text-slate-400 line-through" : isBreached ? "text-red-600" : "text-amber-700"
+                      )}>
+                        {formatSLA(ticket.sla_deadline)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="text-xs font-semibold text-slate-600">{ticket.impact_count} citizen{ticket.impact_count !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="text-xs text-slate-500">{ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}</span>
                       <a
                         href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#1b4332] hover:text-[#133023] bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs transition-colors"
-                        title="Open location on Google Maps"
+                        className="flex items-center gap-1 text-[11px] font-bold text-[#1b4332] hover:underline"
                       >
-                        <Navigation className="w-3.5 h-3.5" />
-                        <span>Map</span>
+                        <Navigation className="w-3 h-3" />
+                        Map
                       </a>
                     </div>
-                    <div className="flex items-center text-sm text-slate-500">
-                      <Users className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                      <span className="font-bold text-[#1b4332]">{ticket.impact_count} citizens reported</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Clock className={clsx("w-4 h-4 mr-2 shrink-0", isResolved ? "text-slate-400" : isBreached ? "text-red-500" : "text-amber-500")} />
-                      <span className={clsx(
-                        "font-bold",
-                        isResolved ? "text-slate-400 line-through" : isBreached ? "text-red-600" : "text-amber-600"
-                      )}>
-                        {new Date(ticket.sla_deadline).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
+                  </div>
+                </div>
 
-                    {/* Coupled Photos */}
-                    {ticket.coupled_images && ticket.coupled_images.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-slate-100">
+                {/* ── Expandable Detail: Citizen Photos ── */}
+                {isExpanded && (
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-slate-100 pt-3">
+                    {ticket.coupled_images && ticket.coupled_images.length > 0 ? (
+                      <>
                         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                           Citizen Photos ({ticket.coupled_images.length})
                         </p>
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                          {ticket.coupled_images.map((imgUrl: string, idx: number) => {
+                          {ticket.coupled_images.map((imgUrl, idx) => {
                             const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
                             return (
                               <a
@@ -252,154 +349,22 @@ export default function OfficerDashboard() {
                                 href={fullUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shrink-0 hover:opacity-85 transition-opacity"
+                                className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-xl overflow-hidden border border-slate-200 hover:opacity-80 transition-opacity"
                               >
-                                <img src={fullUrl} alt={`Coupled image ${idx + 1}`} className="w-full h-full object-cover" />
+                                <img src={fullUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                               </a>
                             );
                           })}
                         </div>
-                      </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No citizen photos attached.</p>
                     )}
                   </div>
-
-                  {!isResolved && (
-                    <div className="pt-4 border-t border-slate-100">
-                      <button 
-                        onClick={() => router.push(`/ward/${params.wardNo}/resolve/${ticket.master_ticket_id}`)}
-                        className="w-full bg-[#1b4332] hover:bg-[#133023] text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        <Camera className="w-4 h-4" />
-                        Resolve Ticket
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Desktop View: Data Table */}
-        <div className="hidden md:block bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[13px] uppercase tracking-wider">
-                  <th className="p-5 font-bold">Ticket ID</th>
-                  <th className="p-5 font-bold">Category & Map</th>
-                  <th className="p-5 font-bold">Citizen Photos</th>
-                  <th className="p-5 font-bold">Impact</th>
-                  <th className="p-5 font-bold">SLA Deadline</th>
-                  <th className="p-5 font-bold">Status</th>
-                  <th className="p-5 font-bold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {tickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-12 text-center text-slate-400 font-medium">
-                      No tickets found for this ward.
-                    </td>
-                  </tr>
-                ) : (
-                  tickets.map(ticket => {
-                    const isResolved = ticket.status === "resolved";
-                    const isBreached = !isResolved && new Date(ticket.sla_deadline).getTime() < Date.now();
-                    
-                    return (
-                      <tr key={ticket.master_ticket_id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="p-5 font-mono text-sm font-semibold text-slate-600">{ticket.master_ticket_id}</td>
-                        <td className="p-5">
-                          <span className="font-bold text-slate-800">{ticket.category}</span>
-                          <div className="flex items-center gap-2 text-[13px] text-slate-500 mt-1">
-                            <div className="flex items-center">
-                              <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                              {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
-                            </div>
-                            <a
-                              href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-0.5 text-xs font-bold text-[#1b4332] hover:text-[#133023] hover:underline bg-slate-100 px-2 py-0.5 rounded-md"
-                              title="Open exact location in Google Maps"
-                            >
-                              <Navigation className="w-3 h-3" />
-                              <span>Map</span>
-                            </a>
-                          </div>
-                        </td>
-                        <td className="p-5">
-                          {ticket.coupled_images && ticket.coupled_images.length > 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap max-w-[200px]">
-                              {ticket.coupled_images.slice(0, 4).map((imgUrl: string, idx: number) => {
-                                const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
-                                return (
-                                  <a
-                                    key={idx}
-                                    href={fullUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shrink-0 hover:scale-105 transition-transform"
-                                    title="View citizen image"
-                                  >
-                                    <img src={fullUrl} alt="" className="w-full h-full object-cover" />
-                                  </a>
-                                );
-                              })}
-                              {ticket.coupled_images.length > 4 && (
-                                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                  +{ticket.coupled_images.length - 4}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 italic">No photos</span>
-                          )}
-                        </td>
-                        <td className="p-5">
-                          <span className="inline-flex items-center justify-center bg-[#e4ede5] text-[#1b4332] text-xs font-bold px-3 py-1.5 rounded-full">
-                            {ticket.impact_count} citizens
-                          </span>
-                        </td>
-                        <td className="p-5">
-                          <div className="flex items-center gap-2">
-                            <Clock className={clsx("w-4 h-4", isResolved ? "text-slate-400" : isBreached ? "text-red-500" : "text-amber-500")} />
-                            <span className={clsx(
-                              "text-[13px] font-bold",
-                              isResolved ? "text-slate-400 line-through" : isBreached ? "text-red-600" : "text-amber-600"
-                            )}>
-                              {new Date(ticket.sla_deadline).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-5">
-                          <span className={clsx(
-                            "inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full",
-                            isResolved ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
-                            : "bg-blue-50 text-blue-600 border border-blue-200"
-                          )}>
-                            {isResolved ? "RESOLVED" : "OPEN"}
-                          </span>
-                        </td>
-                        <td className="p-5 text-right">
-                          {!isResolved && (
-                            <button 
-                              onClick={() => router.push(`/ward/${params.wardNo}/resolve/${ticket.master_ticket_id}`)}
-                              className="bg-[#1b4332] hover:bg-[#133023] text-white font-bold py-2.5 px-5 rounded-xl text-sm transition-colors inline-flex items-center gap-2 shadow-sm"
-                            >
-                              <Camera className="w-4 h-4" />
-                              Resolve
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>

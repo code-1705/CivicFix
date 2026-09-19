@@ -137,7 +137,15 @@ export default function ResolveTicketPage() {
       router.push(`/ward/${params.wardNo}`);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || "Failed to mark as resolved.");
+      const detail = err.response?.data?.detail;
+      if (typeof detail === "string") {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        // FastAPI 422 returns array of validation error objects
+        setError(detail.map((d: any) => d.msg || JSON.stringify(d)).join(". "));
+      } else {
+        setError("Failed to mark as resolved. Please try again.");
+      }
       setIsSubmitting(false);
     }
   };

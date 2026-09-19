@@ -25,7 +25,7 @@
       "lng": 77.60628668470217,
       "mobile": "9609903555",
       "ward": "151",
-      "status": "triaged",
+      "status": "resolved",
       "image_count": 1,
       "image_urls": [
         "/uploads/8dd5f16c21.jpeg"
@@ -41,7 +41,14 @@
       "urgency_tier": 4,
       "reasoning": "The visual evidence clearly shows substantial asphalt failure with a deep open cavity in the driving lane. This is a genuine municipal road infrastructure defect and not an unrelated image.",
       "rejection_reason": "",
-      "master_ticket_id": "MT-A175F5"
+      "master_ticket_id": "MT-A175F5",
+      "resolved_at": "2026-09-19T21:17:46.028586+00:00",
+      "resolved_image_url": "/uploads/resolved_28b698c3c4.jpg",
+      "resolved_image_urls": [
+        "/uploads/resolved_28b698c3c4.jpg",
+        "/uploads/resolved_d1f72172d9.jpg",
+        "/uploads/resolved_24dbba1263.jpg"
+      ]
     }
   },
   "master_tickets": {

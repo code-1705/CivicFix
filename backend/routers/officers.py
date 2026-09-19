@@ -65,8 +65,8 @@ async def resolve_ticket(
     master_ticket_id: str,
     lat: float = Form(...),
     lng: float = Form(...),
-    override: Optional[bool] = Form(False),
-    proof_images: Optional[List[UploadFile]] = File(None),
+    override: Optional[str] = Form("false"),
+    proof_images: List[UploadFile] = File(default=[]),
     proof_image: Optional[UploadFile] = File(None),
     current_officer: dict = Depends(get_current_officer)
 ):
@@ -85,8 +85,9 @@ async def resolve_ticket(
         raise HTTPException(status_code=403, detail="Forbidden. You cannot resolve tickets for other wards.")
         
     # Geofence check (100m tolerance)
+    override_bool = str(override).lower() in ("true", "1", "yes")
     distance = calculate_distance(lat, lng, ticket["lat"], ticket["lng"])
-    if distance > 100 and not override:
+    if distance > 100 and not override_bool:
         raise HTTPException(status_code=400, detail=f"Geofence Failed: You are {int(distance)}m away from the issue. Must be within 100m.")
         
     # Gather proof images — use proof_images list; fall back to single proof_image only if list is empty

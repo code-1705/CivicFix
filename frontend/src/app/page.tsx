@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Camera, MapPin, Loader2, AlertCircle, ArrowRight,
   Search, RefreshCw, X, CheckCircle2, Copy
@@ -69,13 +69,13 @@ export default function Home() {
     );
   }, []);
 
-  // Auto-request on mount for "new" tab
-  const tabRef = useRef(false);
-  if (!tabRef.current && activeTab === "new" && gpsState === "idle") {
-    tabRef.current = true;
-    // Defer so it runs after first render
-    setTimeout(requestGPS, 0);
-  }
+  // Auto-request GPS on mount for "new" tab
+  useEffect(() => {
+    if (activeTab === "new" && gpsState === "idle") {
+      requestGPS();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally only on mount
 
   const removeImage = (idx: number) => {
     setImages((prev) => {
