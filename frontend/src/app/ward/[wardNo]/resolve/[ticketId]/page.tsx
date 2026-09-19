@@ -10,8 +10,8 @@ export default function ResolveTicketPage() {
   const params = useParams();
   const router = useRouter();
   
-  const [image, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,18 +46,27 @@ export default function ResolveTicketPage() {
   }, [router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setImages(prev => [...prev, ...files].slice(0, 5));
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviews(prev => [...prev, reader.result as string].slice(0, 5));
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
+  const removeImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, i) => i !== indexToRemove));
+    setPreviews(prev => prev.filter((_, i) => i !== indexToRemove));
+  };
+
   const handleResolve = async () => {
-    if (!image || !location) {
-      setError("Photo and GPS location are required.");
+    if (images.length === 0 || !location) {
+      setError("At least one photo and GPS location are required.");
       return;
     }
 
@@ -67,7 +76,11 @@ export default function ResolveTicketPage() {
     try {
       const token = localStorage.getItem("officer_token");
       const formData = new FormData();
-      formData.append("proof_image", image);
+      images.forEach(img => {
+        formData.append("proof_images", img);
+      });
+      // Also send first as proof_image for backwards compatibility
+      formData.append("proof_image", images[0]);
       formData.append("lat", location.lat.toString());
       formData.append("lng", location.lng.toString());
       formData.append("override", override.toString());
@@ -106,29 +119,53 @@ export default function ResolveTicketPage() {
         <div className="flex-1 flex flex-col">
           
           {/* Photo Upload Box */}
-          <div 
-            className="relative group cursor-pointer border-[1.5px] border-dashed border-slate-300 rounded-3xl bg-white hover:bg-slate-50 transition-all overflow-hidden flex flex-col items-center justify-center p-8 mb-8 shadow-sm h-64"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {preview ? (
-              <img src={preview} alt="Proof Preview" className="w-full h-full object-cover absolute inset-0 opacity-90 group-hover:opacity-100" />
-            ) : (
+          <div className="mb-8">
+            <div 
+              className="relative group cursor-pointer border-[1.5px] border-dashed border-slate-300 rounded-3xl bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center p-8 shadow-sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <div className="flex flex-col items-center text-center">
                 <div className="w-14 h-14 bg-[#e4ede5] rounded-full flex items-center justify-center mb-4">
                   <Camera className="w-6 h-6 text-[#1b4332]" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">Capture "After" Photo</h3>
-                <p className="text-sm text-slate-500 mt-2">Required proof of resolution</p>
+                <h3 className="text-lg font-bold text-slate-800">
+                  {previews.length > 0 ? "Add More Proof Photos" : "Capture 'After' Photos"}
+                </h3>
+                <p className="text-sm text-slate-500 mt-2">
+                  {previews.length > 0 ? `${previews.length} of 5 photos added` : "Required proof of resolution (up to 5)"}
+                </p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+              />
+            </div>
+
+            {/* Preview Thumbnails */}
+            {previews.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto mt-4 pb-2 snap-x scrollbar-hide">
+                {previews.map((src, idx) => (
+                  <div key={idx} className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm snap-start group">
+                    <img src={src} alt={`Proof Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(idx);
+                      }}
+                      className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-colors"
+                      title="Remove photo"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleImageChange}
-            />
           </div>
 
           {/* GPS Verification Box */}
@@ -175,7 +212,7 @@ export default function ResolveTicketPage() {
           <div className="mt-auto pt-2 pb-6">
             <button
               onClick={handleResolve}
-              disabled={isSubmitting || !image || !location}
+              disabled={isSubmitting || images.length === 0 || !location}
               className="w-full bg-[#1b4332] hover:bg-[#133023] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               {isSubmitting ? (

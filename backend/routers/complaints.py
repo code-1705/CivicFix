@@ -2,8 +2,15 @@ from fastapi import APIRouter, File, Form, UploadFile, BackgroundTasks, HTTPExce
 from typing import List, Optional
 from database import db
 from services.ai_triage import process_complaint_task
+from services.sms_service import send_sms
+
+import os
+import uuid
 
 router = APIRouter()
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/complain")
 async def create_complaint(
@@ -13,9 +20,24 @@ async def create_complaint(
     mobile: Optional[str] = Form(None),
     images: List[UploadFile] = File(...)
 ):
+    if len(images) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 images allowed")
+
     # Determine Ward (Mocking Point-in-Polygon for hackathon)
     # E.g. if lat > 0 return 151, else 152
     ward = "151"
+    
+    saved_image_urls = []
+    saved_image_paths = []
+    for img in images:
+        ext = os.path.splitext(img.filename or "")[1] or ".jpg"
+        unique_name = f"{uuid.uuid4().hex[:10]}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_name)
+        content = await img.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        saved_image_paths.append(file_path)
+        saved_image_urls.append(f"/uploads/{unique_name}")
     
     complaint_data = {
         "lat": lat,
@@ -23,13 +45,28 @@ async def create_complaint(
         "mobile": mobile,
         "ward": ward,
         "status": "pending_triage",
-        "image_count": len(images) # S3 upload logic goes here
+        "image_count": len(images),
+        "image_urls": saved_image_urls,
+        "image_url": saved_image_urls[0] if saved_image_urls else None
     }
     
     complaint_id = db.create_complaint(complaint_data)
+    print(f"[OK] Complaint {complaint_id} saved to DB. Queuing AI vision triage background task...", flush=True)
+
+    # If phone number entered, send message with ONLY complain id
+    if mobile:
+        send_sms(mobile, complaint_id)
     
-    # Spawn background task for AI
-    background_tasks.add_task(process_complaint_task, complaint_id, ward, lat, lng, mobile)
+    # Spawn background task for AI with actual image paths
+    background_tasks.add_task(
+        process_complaint_task,
+        complaint_id,
+        ward,
+        lat,
+        lng,
+        mobile,
+        saved_image_paths
+    )
     
     return {"complaint_id": complaint_id, "status": "queued"}
 

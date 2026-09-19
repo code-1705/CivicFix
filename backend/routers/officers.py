@@ -5,6 +5,9 @@ from auth import get_password_hash, verify_password, create_access_token, get_cu
 from database import db
 from datetime import datetime, timezone
 import math
+import os
+import uuid
+from services.sms_service import send_sms
 
 router = APIRouter()
 
@@ -40,9 +43,21 @@ async def get_ward_complaints(ward_number: str, current_officer: dict = Depends(
         
     tickets = db.get_master_tickets_by_ward(ward_number)
     
-    # Sort tickets to show high severity / breaching SLA first
-    # (Implementation detail omitted for brevity, returning raw list for now)
-    return tickets
+    enriched_tickets = []
+    for t in tickets:
+        ticket_copy = dict(t)
+        coupled_images = []
+        for cid in t.get("complaint_ids", []):
+            comp = db.get_complaint(cid)
+            if comp:
+                urls = comp.get("image_urls") or ([comp.get("image_url")] if comp.get("image_url") else [])
+                for u in urls:
+                    if u and u not in coupled_images:
+                        coupled_images.append(u)
+        ticket_copy["coupled_images"] = coupled_images
+        enriched_tickets.append(ticket_copy)
+        
+    return enriched_tickets
 
 
 @router.post("/resolve/{master_ticket_id}")
@@ -51,7 +66,8 @@ async def resolve_ticket(
     lat: float = Form(...),
     lng: float = Form(...),
     override: Optional[bool] = Form(False),
-    proof_image: UploadFile = File(...),
+    proof_images: Optional[List[UploadFile]] = File(None),
+    proof_image: Optional[UploadFile] = File(None),
     current_officer: dict = Depends(get_current_officer)
 ):
     # Fetch Master Ticket
@@ -73,15 +89,58 @@ async def resolve_ticket(
     if distance > 100 and not override:
         raise HTTPException(status_code=400, detail=f"Geofence Failed: You are {int(distance)}m away from the issue. Must be within 100m.")
         
+    # Gather proof images — use proof_images list; fall back to single proof_image only if list is empty
+    files_to_save = [f for f in (proof_images or []) if f and f.filename]
+    if not files_to_save and proof_image and proof_image.filename:
+        files_to_save.append(proof_image)
+
+    if not files_to_save:
+        raise HTTPException(status_code=400, detail="At least one resolution proof photo is required.")
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    resolved_image_urls = []
+    for file_obj in files_to_save:
+        ext = os.path.splitext(file_obj.filename or "")[1] or ".jpg"
+        unique_name = f"resolved_{uuid.uuid4().hex[:10]}{ext}"
+        proof_path = os.path.join(upload_dir, unique_name)
+        proof_content = await file_obj.read()
+        with open(proof_path, "wb") as f:
+            f.write(proof_content)
+        resolved_image_urls.append(f"/uploads/{unique_name}")
+
+    primary_image_url = resolved_image_urls[0] if resolved_image_urls else None
+
     # Update Status
+    resolved_time = datetime.now(timezone.utc).isoformat()
     if db.use_mock:
         db._mock_master_tickets[master_ticket_id]["status"] = "resolved"
-        db._mock_master_tickets[master_ticket_id]["resolved_at"] = datetime.now(timezone.utc).isoformat()
+        db._mock_master_tickets[master_ticket_id]["resolved_at"] = resolved_time
+        db._mock_master_tickets[master_ticket_id]["resolved_image_url"] = primary_image_url
+        db._mock_master_tickets[master_ticket_id]["resolved_image_urls"] = resolved_image_urls
+        
+        # Also update associated complaints and notify citizens via SMS
+        for cid in db._mock_master_tickets[master_ticket_id].get("complaint_ids", []):
+            db.update_complaint(cid, {
+                "status": "resolved",
+                "resolved_at": resolved_time,
+                "resolved_image_url": primary_image_url,
+                "resolved_image_urls": resolved_image_urls
+            })
+            complaint = db.get_complaint(cid)
+            if complaint and complaint.get("mobile"):
+                send_sms(
+                    complaint["mobile"],
+                    f"{cid} resolved"
+                )
     else:
         # DynamoDB update expression
         pass
         
-    # Trigger SMS to citizens who reported it (Iterating over complaint_ids)
-    # import services.ai_triage -> send_sms()
-    
-    return {"status": "resolved", "master_ticket_id": master_ticket_id}
+    return {
+        "status": "resolved", 
+        "master_ticket_id": master_ticket_id,
+        "resolved_image_url": primary_image_url,
+        "resolved_image_urls": resolved_image_urls
+    }

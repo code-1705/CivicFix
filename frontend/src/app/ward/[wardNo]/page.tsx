@@ -11,7 +11,8 @@ import {
   LogOut,
   Camera,
   Map,
-  Users
+  Users,
+  Navigation
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -25,6 +26,7 @@ interface Ticket {
   lng: number;
   sla_deadline: string;
   complaint_ids: string[];
+  coupled_images?: string[];
 }
 
 export default function OfficerDashboard() {
@@ -167,10 +169,22 @@ export default function OfficerDashboard() {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2 mb-4">
-                    <div className="flex items-center text-sm text-slate-500">
-                      <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                      {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
+                  <div className="flex flex-col gap-2.5 mb-4">
+                    <div className="flex items-center justify-between text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <div className="flex items-center text-slate-600">
+                        <MapPin className="w-4 h-4 mr-1.5 text-slate-400 shrink-0" />
+                        <span>{ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}</span>
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-[#1b4332] hover:text-[#133023] bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs transition-colors"
+                        title="Open location on Google Maps"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        <span>Map</span>
+                      </a>
                     </div>
                     <div className="flex items-center text-sm text-slate-500">
                       <Users className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
@@ -185,6 +199,31 @@ export default function OfficerDashboard() {
                         {new Date(ticket.sla_deadline).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
+
+                    {/* Coupled Photos */}
+                    {ticket.coupled_images && ticket.coupled_images.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                          Citizen Photos ({ticket.coupled_images.length})
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          {ticket.coupled_images.map((imgUrl: string, idx: number) => {
+                            const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
+                            return (
+                              <a
+                                key={idx}
+                                href={fullUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shrink-0 hover:opacity-85 transition-opacity"
+                              >
+                                <img src={fullUrl} alt={`Coupled image ${idx + 1}`} className="w-full h-full object-cover" />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {!isResolved && (
@@ -211,7 +250,8 @@ export default function OfficerDashboard() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[13px] uppercase tracking-wider">
                   <th className="p-5 font-bold">Ticket ID</th>
-                  <th className="p-5 font-bold">Category</th>
+                  <th className="p-5 font-bold">Category & Map</th>
+                  <th className="p-5 font-bold">Citizen Photos</th>
                   <th className="p-5 font-bold">Impact</th>
                   <th className="p-5 font-bold">SLA Deadline</th>
                   <th className="p-5 font-bold">Status</th>
@@ -221,7 +261,7 @@ export default function OfficerDashboard() {
               <tbody className="divide-y divide-slate-100">
                 {tickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-slate-400 font-medium">
+                    <td colSpan={7} className="p-12 text-center text-slate-400 font-medium">
                       No tickets found for this ward.
                     </td>
                   </tr>
@@ -235,10 +275,50 @@ export default function OfficerDashboard() {
                         <td className="p-5 font-mono text-sm font-semibold text-slate-600">{ticket.master_ticket_id}</td>
                         <td className="p-5">
                           <span className="font-bold text-slate-800">{ticket.category}</span>
-                          <div className="flex items-center text-[13px] text-slate-500 mt-1">
-                            <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                            {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
+                          <div className="flex items-center gap-2 text-[13px] text-slate-500 mt-1">
+                            <div className="flex items-center">
+                              <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                              {ticket.lat.toFixed(4)}, {ticket.lng.toFixed(4)}
+                            </div>
+                            <a
+                              href={`https://www.google.com/maps?q=${ticket.lat},${ticket.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-0.5 text-xs font-bold text-[#1b4332] hover:text-[#133023] hover:underline bg-slate-100 px-2 py-0.5 rounded-md"
+                              title="Open exact location in Google Maps"
+                            >
+                              <Navigation className="w-3 h-3" />
+                              <span>Map</span>
+                            </a>
                           </div>
+                        </td>
+                        <td className="p-5">
+                          {ticket.coupled_images && ticket.coupled_images.length > 0 ? (
+                            <div className="flex items-center gap-1.5 flex-wrap max-w-[200px]">
+                              {ticket.coupled_images.slice(0, 4).map((imgUrl: string, idx: number) => {
+                                const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={fullUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shrink-0 hover:scale-105 transition-transform"
+                                    title="View citizen image"
+                                  >
+                                    <img src={fullUrl} alt="" className="w-full h-full object-cover" />
+                                  </a>
+                                );
+                              })}
+                              {ticket.coupled_images.length > 4 && (
+                                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  +{ticket.coupled_images.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No photos</span>
+                          )}
                         </td>
                         <td className="p-5">
                           <span className="inline-flex items-center justify-center bg-[#e4ede5] text-[#1b4332] text-xs font-bold px-3 py-1.5 rounded-full">

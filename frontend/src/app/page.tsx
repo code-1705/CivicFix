@@ -59,6 +59,11 @@ export default function Home() {
     }
   }, [activeTab]);
 
+  const removeImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, i) => i !== indexToRemove));
+    setPreviews(prev => prev.filter((_, i) => i !== indexToRemove));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
@@ -181,8 +186,19 @@ export default function Home() {
               {previews.length > 0 && (
                 <div className="flex gap-3 overflow-x-auto mt-4 pb-2 snap-x scrollbar-hide">
                   {previews.map((src, idx) => (
-                    <div key={idx} className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm snap-start">
+                    <div key={idx} className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm snap-start group">
                        <img src={src} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                       <button
+                         type="button"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           removeImage(idx);
+                         }}
+                         className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-colors"
+                         title="Remove photo"
+                       >
+                         &times;
+                       </button>
                     </div>
                   ))}
                 </div>

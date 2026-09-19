@@ -7,7 +7,7 @@ async def escalation_engine():
     """
     Background worker that periodically checks for SLA breaches and escalates tickets.
     """
-    print("🚀 Escalation Engine Started...")
+    print("[ENGINE] Escalation Engine Started...")
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -38,7 +38,7 @@ async def escalation_engine():
                 
                 # 100% SLA Breach -> Escalate
                 if percentage >= 100 and current_level == 1:
-                    print(f"🚨 SLA BREACH on {mt_id}! Escalating to Level 2 (Ward Executive).")
+                    print(f"[SLA-BREACH] SLA BREACH on {mt_id}! Escalating to Level 2 (Ward Executive).")
                     if db.use_mock:
                         db._mock_master_tickets[mt_id]["assigned_level"] = 2
                         db._mock_master_tickets[mt_id]["assigned_to"] = f"ward_executive_{mt['ward']}"
@@ -47,14 +47,14 @@ async def escalation_engine():
                     
                 # 150% SLA Breach -> Escalate further
                 elif percentage >= 150 and current_level == 2:
-                    print(f"🚨🚨 CRITICAL SLA BREACH on {mt_id}! Escalating to Level 3 (Zonal).")
+                    print(f"[CRITICAL-SLA-BREACH] CRITICAL SLA BREACH on {mt_id}! Escalating to Level 3 (Zonal).")
                     if db.use_mock:
                         db._mock_master_tickets[mt_id]["assigned_level"] = 3
                         db._mock_master_tickets[mt_id]["assigned_to"] = "zonal_commissioner"
                         
                 # 75% Warning
                 elif percentage >= 75 and percentage < 100 and not mt.get("warning_sent"):
-                    print(f"⚠️ SLA WARNING on {mt_id}: 75% time elapsed.")
+                    print(f"[SLA-WARNING] SLA WARNING on {mt_id}: 75% time elapsed.")
                     if db.use_mock:
                         db._mock_master_tickets[mt_id]["warning_sent"] = True
 
