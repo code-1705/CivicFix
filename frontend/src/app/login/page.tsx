@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { API_BASE_URL } from "@/lib/api";
 import { ShieldCheck, Lock, Hash, Loader2, AlertCircle, Eye, EyeOff, MapPin, CheckCircle2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -19,7 +20,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const response = await axios.post("http://localhost:8000/login", {
+      const response = await axios.post(`${API_BASE_URL}/login`, {
         wardNo,
         password,
       });

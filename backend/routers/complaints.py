@@ -3,6 +3,7 @@ from typing import List, Optional
 from database import db
 from services.ai_triage import process_complaint_task
 from services.sms_service import send_sms
+from services.storage_service import storage_service
 
 import os
 import uuid
@@ -30,14 +31,10 @@ async def create_complaint(
     saved_image_urls = []
     saved_image_paths = []
     for img in images:
-        ext = os.path.splitext(img.filename or "")[1] or ".jpg"
-        unique_name = f"{uuid.uuid4().hex[:10]}{ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_name)
         content = await img.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-        saved_image_paths.append(file_path)
-        saved_image_urls.append(f"/uploads/{unique_name}")
+        public_url, local_path = storage_service.save_file(content, img.filename or "")
+        saved_image_paths.append(local_path)
+        saved_image_urls.append(public_url)
     
     complaint_data = {
         "lat": lat,

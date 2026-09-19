@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civicfix-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_MOCK_AI=${USE_MOCK_AI:-false}
+      - USE_MOCK_DB=${USE_MOCK_DB:-true}
+      - USE_S3=${USE_S3:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super_secret_civicfix_jwt_key}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
+    volumes:
+      - backend_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    container_name: civicfix-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_uploads:

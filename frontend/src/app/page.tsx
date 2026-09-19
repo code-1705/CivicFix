@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { API_BASE_URL } from "@/lib/api";
 
 interface ImageEntry {
   file: File;
@@ -138,7 +139,7 @@ export default function Home() {
       formData.append("lng", location.lng.toString());
       if (mobile) formData.append("mobile", mobile);
 
-      const response = await axios.post("http://localhost:8000/complain", formData, {
+      const response = await axios.post(`${API_BASE_URL}/complain`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

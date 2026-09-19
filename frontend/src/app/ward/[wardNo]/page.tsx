@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { API_BASE_URL, getFullImageUrl } from "@/lib/api";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -54,7 +55,7 @@ export default function OfficerDashboard() {
       const token = localStorage.getItem("officer_token");
       if (!token) { router.push("/login"); return; }
 
-      const response = await axios.get(`http://localhost:8000/ward_complain/${params.wardNo}`, {
+      const response = await axios.get(`${API_BASE_URL}/ward_complain/${params.wardNo}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -342,7 +343,7 @@ export default function OfficerDashboard() {
                         </p>
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                           {ticket.coupled_images.map((imgUrl, idx) => {
-                            const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
+                            const fullUrl = getFullImageUrl(imgUrl);
                             return (
                               <a
                                 key={idx}

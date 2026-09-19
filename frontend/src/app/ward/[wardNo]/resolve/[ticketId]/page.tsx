@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { API_BASE_URL, getFullImageUrl } from "@/lib/api";
 import {
   Camera, MapPin, Loader2, AlertTriangle, ArrowLeft,
   ArrowRight, X, RefreshCw, Info, Navigation
@@ -73,7 +74,7 @@ export default function ResolveTicketPage() {
     const fetchTicket = async () => {
       try {
         const wardNo = localStorage.getItem("officer_ward");
-        const response = await axios.get(`http://localhost:8000/ward_complain/${wardNo}`, {
+        const response = await axios.get(`${API_BASE_URL}/ward_complain/${wardNo}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const found = response.data.find(
@@ -127,7 +128,7 @@ export default function ResolveTicketPage() {
       formData.append("lng", location.lng.toString());
       formData.append("override", override.toString());
 
-      await axios.post(`http://localhost:8000/resolve/${params.ticketId}`, formData, {
+      await axios.post(`${API_BASE_URL}/resolve/${params.ticketId}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
@@ -205,7 +206,7 @@ export default function ResolveTicketPage() {
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                   {ticket.coupled_images.map((imgUrl, idx) => {
-                    const fullUrl = imgUrl.startsWith("http") ? imgUrl : `http://localhost:8000${imgUrl}`;
+                    const fullUrl = getFullImageUrl(imgUrl);
                     return (
                       <a
                         key={idx}

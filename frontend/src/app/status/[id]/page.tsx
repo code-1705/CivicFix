@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { API_BASE_URL, getFullImageUrl } from "@/lib/api";
 import { 
   CheckCircle2, 
   Clock, 
@@ -53,7 +54,7 @@ export default function StatusPage() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/status/${params.id}`);
+        const response = await axios.get(`${API_BASE_URL}/status/${params.id}`);
         const result: StatusData = response.data;
         setData(result);
         // Stop polling once terminal state is reached
@@ -114,7 +115,7 @@ export default function StatusPage() {
       : complaint.image_url 
       ? [complaint.image_url] 
       : []
-  ).map((url: string) => (url.startsWith("http") ? url : `http://localhost:8000${url}`));
+  ).map((url: string) => getFullImageUrl(url));
 
   // All images uploaded by the officer to resolve the master ticket
   const rawResolvedList: string[] = 
@@ -128,9 +129,7 @@ export default function StatusPage() {
       ? [master_ticket.resolved_image_url]
       : [];
 
-  const afterPhotos: string[] = rawResolvedList.map((url: string) => 
-    url.startsWith("http") ? url : `http://localhost:8000${url}`
-  );
+  const afterPhotos: string[] = rawResolvedList.map((url: string) => getFullImageUrl(url));
 
   return (
     <div className="min-h-screen bg-[#f5f6f2]">

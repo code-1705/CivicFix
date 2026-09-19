@@ -8,6 +8,7 @@ import math
 import os
 import uuid
 from services.sms_service import send_sms
+from services.storage_service import storage_service
 
 router = APIRouter()
 
@@ -98,18 +99,11 @@ async def resolve_ticket(
     if not files_to_save:
         raise HTTPException(status_code=400, detail="At least one resolution proof photo is required.")
 
-    upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    
     resolved_image_urls = []
     for file_obj in files_to_save:
-        ext = os.path.splitext(file_obj.filename or "")[1] or ".jpg"
-        unique_name = f"resolved_{uuid.uuid4().hex[:10]}{ext}"
-        proof_path = os.path.join(upload_dir, unique_name)
         proof_content = await file_obj.read()
-        with open(proof_path, "wb") as f:
-            f.write(proof_content)
-        resolved_image_urls.append(f"/uploads/{unique_name}")
+        public_url, _ = storage_service.save_file(proof_content, file_obj.filename or "", prefix="resolved_")
+        resolved_image_urls.append(public_url)
 
     primary_image_url = resolved_image_urls[0] if resolved_image_urls else None
 
