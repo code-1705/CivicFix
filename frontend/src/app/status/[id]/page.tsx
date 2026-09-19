@@ -13,7 +13,9 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowLeft,
-  XCircle
+  XCircle,
+  Copy,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -29,7 +31,24 @@ export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAI, setShowAI] = useState(true);
+  const [copied, setCopied] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(String(params.id)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: `CivicFix Complaint ${params.id}`, url });
+    } else {
+      navigator.clipboard.writeText(url);
+    }
+  };
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -122,7 +141,25 @@ export default function StatusPage() {
             Home
           </Link>
           <h1 className="text-2xl font-extrabold text-[#1b4332]">Report Status</h1>
-          <p className="text-sm text-slate-500 font-mono mt-1 px-1 tracking-tight">ID: {params.id}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-slate-500 font-mono tracking-tight">ID: <span className="font-bold text-slate-700">{params.id}</span></p>
+            <button
+              onClick={handleCopyId}
+              className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-600"
+              title="Copy complaint ID"
+              aria-label="Copy complaint ID"
+            >
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={handleShare}
+              className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-400 hover:text-slate-600"
+              title="Share report"
+              aria-label="Share report"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </header>
 
         <div className="space-y-4">
@@ -184,14 +221,20 @@ export default function StatusPage() {
 
           {/* Explainability Drawer */}
           {complaint.status === "pending_triage" ? (
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center gap-3">
-              <div className="p-2.5 bg-amber-50 rounded-xl">
-                <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 bg-amber-50 rounded-xl">
+                  <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 text-sm">AI Vision Analysis in Progress...</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Usually completes in under 60 seconds.</p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-slate-800 text-sm">AI Vision Analysis in Progress...</p>
-                <p className="text-xs text-slate-500 mt-0.5">Examining image for municipal infrastructure hazards.</p>
+              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-amber-400 h-full rounded-full animate-pulse" style={{ width: "60%" }} />
               </div>
+              <p className="text-[11px] text-slate-400 mt-2">This page refreshes automatically. You can close it and check back later using your complaint ID.</p>
             </div>
           ) : (isTriaged || isRejected) && complaint.reasoning ? (
             <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm">

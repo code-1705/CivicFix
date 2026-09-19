@@ -112,15 +112,7 @@ def process_complaint_task(complaint_id: str, ward: str, lat: float, lng: float,
                     return json.loads(body)
 
             try:
-                try:
-                    response_json = execute_openai_request(openai_model)
-                except urllib.error.HTTPError as he:
-                    err_body = he.read().decode('utf-8', errors='ignore') if hasattr(he, 'read') else str(he)
-                    if ("model" in err_body.lower() or he.code in (400, 404)) and openai_model != "gpt-4o-mini":
-                        print(f"[*] Model '{openai_model}' failed ({he.code}). Falling back to 'gpt-4o-mini'...")
-                        response_json = execute_openai_request("gpt-4o-mini")
-                    else:
-                        raise he
+                response_json = execute_openai_request(openai_model)
                 result_str = response_json["choices"][0]["message"]["content"]
                 ai_result = json.loads(result_str)
             except urllib.error.HTTPError as he:

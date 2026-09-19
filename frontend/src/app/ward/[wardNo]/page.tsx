@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { 
@@ -12,7 +12,8 @@ import {
   Camera,
   Map,
   Users,
-  Navigation
+  Navigation,
+  RefreshCw
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -34,44 +35,58 @@ export default function OfficerDashboard() {
   const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-  useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const token = localStorage.getItem("officer_token");
-        if (!token) {
-          router.push("/login");
-          return;
-        }
+  const fetchTickets = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      else setRefreshing(true);
 
-        const response = await axios.get(`http://localhost:8000/ward_complain/${params.wardNo}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        const sorted = response.data.sort((a: Ticket, b: Ticket) => {
-          if (a.status === "resolved" && b.status !== "resolved") return 1;
-          if (a.status !== "resolved" && b.status === "resolved") return -1;
-          return new Date(a.sla_deadline).getTime() - new Date(b.sla_deadline).getTime();
-        });
-        
-        setTickets(sorted);
-      } catch (err: any) {
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          localStorage.removeItem("officer_token");
-          router.push("/login");
-        }
-        setError("Failed to fetch tickets.");
-      } finally {
-        setLoading(false);
+      const token = localStorage.getItem("officer_token");
+      if (!token) {
+        router.push("/login");
+        return;
       }
-    };
 
-    fetchTickets();
+      const response = await axios.get(`http://localhost:8000/ward_complain/${params.wardNo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const sorted = response.data.sort((a: Ticket, b: Ticket) => {
+        if (a.status === "resolved" && b.status !== "resolved") return 1;
+        if (a.status !== "resolved" && b.status === "resolved") return -1;
+        return new Date(a.sla_deadline).getTime() - new Date(b.sla_deadline).getTime();
+      });
+      
+      setTickets(sorted);
+      setLastRefreshed(new Date());
+      setError(null);
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem("officer_token");
+        router.push("/login");
+      }
+      setError("Failed to fetch tickets.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [params.wardNo, router]);
 
+  useEffect(() => {
+    fetchTickets();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchTickets(true), 30000);
+    return () => clearInterval(interval);
+  }, [fetchTickets]);
+
   const openTicketsCount = tickets.filter(t => t.status !== "resolved").length;
-  const resolvedCount = tickets.filter(t => t.status === "resolved").length;
+  const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+  const resolvedTodayCount = tickets.filter(t =>
+    t.status === "resolved" && new Date((t as any).resolved_at || 0) >= todayMidnight
+  ).length;
   const breachCount = tickets.filter(t => t.status !== "resolved" && new Date(t.sla_deadline).getTime() < Date.now()).length;
 
   const handleLogout = () => {
@@ -94,15 +109,27 @@ export default function OfficerDashboard() {
         <header className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Ward {params.wardNo} Dashboard</h1>
-            <p className="text-slate-500 mt-1 text-sm font-medium">Civic Issue & SLA Management</p>
+            <p className="text-slate-400 mt-1 text-xs font-medium">
+              {lastRefreshed ? `Last updated ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Loading...'}
+            </p>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="p-2.5 bg-[#e4ede5] hover:bg-[#d0ded2] rounded-xl transition-colors text-[#1b4332] flex items-center gap-2 font-bold text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchTickets(true)}
+              disabled={refreshing}
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 disabled:opacity-50"
+              title="Refresh tickets"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-2.5 bg-[#e4ede5] hover:bg-[#d0ded2] rounded-xl transition-colors text-[#1b4332] flex items-center gap-2 font-bold text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
         </header>
 
         {/* Metrics Row */}
@@ -131,7 +158,7 @@ export default function OfficerDashboard() {
             </div>
             <div>
               <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">Resolved Today</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{resolvedCount}</p>
+              <p className="text-3xl font-black text-slate-800 mt-1">{resolvedTodayCount}</p>
             </div>
           </div>
         </div>
@@ -145,16 +172,26 @@ export default function OfficerDashboard() {
         {/* Mobile View: Cards */}
         <div className="md:hidden space-y-4">
           {tickets.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center text-slate-400 font-medium border border-slate-200">
-              No tickets found for this ward.
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
+              <div className="w-16 h-16 bg-[#e4ede5] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-[#1b4332]" />
+              </div>
+              <p className="font-bold text-slate-800">All clear!</p>
+              <p className="text-slate-500 text-sm mt-1">No open tickets in Ward {params.wardNo}.</p>
             </div>
           ) : (
             tickets.map(ticket => {
               const isResolved = ticket.status === "resolved";
               const isBreached = !isResolved && new Date(ticket.sla_deadline).getTime() < Date.now();
+              const severity = ticket.severity || "medium";
+              const borderColor = isResolved ? "border-l-emerald-400" : isBreached ? "border-l-red-500" : severity === "high" ? "border-l-amber-500" : "border-l-slate-300";
               
               return (
-                <div key={ticket.master_ticket_id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                <div key={ticket.master_ticket_id} className={clsx(
+                  "bg-white rounded-2xl p-5 border border-slate-200 shadow-sm border-l-4 transition-shadow hover:shadow-md",
+                  borderColor,
+                  isBreached && "ring-1 ring-red-200"
+                )}>
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <span className="font-bold text-slate-800 text-lg">{ticket.category}</span>
