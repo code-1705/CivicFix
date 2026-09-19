@@ -539,7 +539,14 @@ export default function OfficerDashboard() {
                                 rel="noopener noreferrer"
                                 className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-xl overflow-hidden border border-slate-200 hover:opacity-80 transition-opacity"
                               >
-                                <img src={fullUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                <img
+                                  src={fullUrl}
+                                  alt={`Photo ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+                                  }}
+                                />
                               </a>
                             );
                           })}

@@ -319,7 +319,14 @@ export default function StatusPage() {
                       className="h-32 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-inner group relative"
                       title="Click to view full image"
                     >
-                      <img src={url} alt={`Before ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <img
+                        src={url}
+                        alt={`Before ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+                        }}
+                      />
                       <span className="absolute bottom-1 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
                         #{idx + 1}
                       </span>
@@ -356,7 +363,14 @@ export default function StatusPage() {
                         <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white rounded-full p-0.5 z-10 shadow-md">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
-                        <img src={url} alt={`Resolution Proof ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <img
+                          src={url}
+                          alt={`Resolution Proof ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1578991624414-276ef23a534f?auto=format&fit=crop&w=600&q=80";
+                          }}
+                        />
                         <span className="absolute bottom-1 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
                           Proof #{idx + 1}
                         </span>

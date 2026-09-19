@@ -376,6 +376,9 @@ export default function ExplorePage() {
                               src={fullImgUrl}
                               alt={t.category}
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold text-xs">
