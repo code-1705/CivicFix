@@ -2,7 +2,6 @@
 > **Autonomous Civic Issue Triage & Anti-Fraud Municipal Resolution Engine**  
 > Built for the **AWS First Commit Hackathon**.
 
-[![CI Pipeline](https://img.shields.io/badge/CI_Pipeline-Passing-brightgreen.svg?logo=github)](https://github.com/code-1705/CivicFix/actions)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black.svg?logo=next.js)](https://nextjs.org)
 [![AWS Cloud-Native](https://img.shields.io/badge/Cloud-AWS%20Cloud--Native-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com)
