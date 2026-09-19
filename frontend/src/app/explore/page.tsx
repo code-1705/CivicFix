@@ -70,10 +70,10 @@ export default function ExplorePage() {
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [mapPins, setMapPins] = useState<any[]>([]);
   const [stats, setStats] = useState<PublicStats>({
-    total_issues: 1420,
-    resolved_issues: 1184,
-    active_issues: 236,
-    avg_resolution_hours: 4.2,
+    total_issues: 0,
+    resolved_issues: 0,
+    active_issues: 0,
+    avg_resolution_hours: 0,
   });
 
   // Query state
@@ -225,7 +225,7 @@ export default function ExplorePage() {
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Reports</p>
               <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-0.5">{stats.total_issues.toLocaleString()}</p>
-              <p className="text-[11px] text-slate-500 mt-1">Across 198 municipal wards</p>
+              <p className="text-[11px] text-slate-500 mt-1">Live from database</p>
             </div>
             <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80">
               <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Verified Fixed</p>
@@ -377,7 +377,7 @@ export default function ExplorePage() {
                               alt={t.category}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+                                (e.target as HTMLElement).style.display = "none";
                               }}
                             />
                           ) : (

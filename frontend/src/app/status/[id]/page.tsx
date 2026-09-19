@@ -324,7 +324,7 @@ export default function StatusPage() {
                         alt={`Before ${idx + 1}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80";
+                          (e.target as HTMLElement).style.display = "none";
                         }}
                       />
                       <span className="absolute bottom-1 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
@@ -368,7 +368,7 @@ export default function StatusPage() {
                           alt={`Resolution Proof ${idx + 1}`}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1578991624414-276ef23a534f?auto=format&fit=crop&w=600&q=80";
+                            (e.target as HTMLElement).style.display = "none";
                           }}
                         />
                         <span className="absolute bottom-1 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">

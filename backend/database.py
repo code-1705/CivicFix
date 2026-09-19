@@ -192,7 +192,22 @@ class DatabaseRepository:
 
         total_tickets = len(tickets)
         resolved_count = sum(1 for t in tickets if t.get("status") == "resolved")
-        active_count = total_tickets - resolved_count
+        active_count = sum(1 for t in tickets if t.get("status") != "resolved")
+
+        # Calculate exact average resolution hours from ticket timestamps
+        resolution_hours = []
+        for t in tickets:
+            if t.get("status") == "resolved" and t.get("resolved_at") and t.get("created_at"):
+                try:
+                    c_dt = datetime.fromisoformat(t["created_at"])
+                    r_dt = datetime.fromisoformat(t["resolved_at"])
+                    h = (r_dt - c_dt).total_seconds() / 3600.0
+                    if h >= 0:
+                        resolution_hours.append(h)
+                except Exception:
+                    pass
+
+        avg_hours = round(sum(resolution_hours) / len(resolution_hours), 1) if resolution_hours else 0.0
 
         return {
             "items": paginated_items,
@@ -201,10 +216,10 @@ class DatabaseRepository:
             "limit": limit,
             "total_pages": max(1, math.ceil(total / limit)) if limit > 0 else 1,
             "stats": {
-                "total_issues": max(total_tickets, 142),
-                "resolved_issues": max(resolved_count, 118),
-                "active_issues": max(active_count, 24),
-                "avg_resolution_hours": 4.2
+                "total_issues": total_tickets,
+                "resolved_issues": resolved_count,
+                "active_issues": active_count,
+                "avg_resolution_hours": avg_hours
             }
         }
 
