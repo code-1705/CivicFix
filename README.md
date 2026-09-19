@@ -25,7 +25,9 @@ Municipal governance in Indian cities faces three catastrophic bottlenecks:
 1. **Instant Vision Triage**: AI vision analyzes damage severity, categorizes the issue (Pothole, Garbage, Streetlight, Water Leakage), and auto-routes directly to the responsible ward engineer in under 2 seconds.
 2. **Geo-Deduplication**: Automatically clusters nearby reports using GPS proximity to prevent duplicate tickets while tracking community impact.
 3. **Anti-Fraud Proof Verification**: Ward officers and contractors cannot resolve tickets by clicking a button. They must stand within 100 meters of the problem GPS coordinates and upload photo proof. AI vision inspects the before-and-after proof to verify true physical repair.
-4. **Transparent Citizen Notifications**: Citizens receive immediate tracking SMS/WhatsApp alerts upon filing and automated verification upon genuine fix.
+4. **Inter-Department Relay Engine**: Officers can re-route misclassified tickets across municipal departments (Roads, BWSSB Water, BESCOM Electrical, Sanitation) with full audit trail logging.
+5. **National Transparency Explorer (`/explore`)**: Mobile and desktop public feed + interactive geospatial map showing live civic resolutions across Indian cities with 0% mock data.
+6. **Transparent Citizen Notifications**: Citizens receive immediate tracking SMS/WhatsApp alerts upon filing and automated verification upon genuine fix.
 
 ---
 
