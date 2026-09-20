@@ -61,34 +61,49 @@ class DatabaseRepository:
             self._mock_complaints[complaint_id] = data
             self._save_mock_store()
         else:
-            self.complaints_table.put_item(Item=data)
+            try:
+                from decimal import Decimal
+                dynamo_data = json.loads(json.dumps(data), parse_float=Decimal)
+                self.complaints_table.put_item(Item=dynamo_data)
+            except Exception as e:
+                print(f"[!] DynamoDB put_item failed: {e}. Falling back to local store.", flush=True)
+            self._mock_complaints[complaint_id] = data
+            self._save_mock_store()
             
         return complaint_id
 
     def get_complaint(self, complaint_id: str) -> Optional[dict]:
-        if self.use_mock:
-            self._load_mock_store()
-            return self._mock_complaints.get(complaint_id)
-        else:
-            response = self.complaints_table.get_item(Key={"complaint_id": complaint_id})
-            return response.get("Item")
+        self._load_mock_store()
+        if not self.use_mock:
+            try:
+                response = self.complaints_table.get_item(Key={"complaint_id": complaint_id})
+                item = response.get("Item")
+                if item:
+                    # Convert Decimals back to float/int
+                    return json.loads(json.dumps(item, default=float))
+            except Exception as e:
+                print(f"[!] DynamoDB get_item error: {e}", flush=True)
+        return self._mock_complaints.get(complaint_id)
 
     def update_complaint(self, complaint_id: str, updates: dict):
-        if self.use_mock:
-            self._load_mock_store()
-            if complaint_id in self._mock_complaints:
-                self._mock_complaints[complaint_id].update(updates)
-                self._save_mock_store()
-        else:
-            pass
+        self._load_mock_store()
+        if complaint_id in self._mock_complaints:
+            self._mock_complaints[complaint_id].update(updates)
+            self._save_mock_store()
 
     # --- Master Tickets ---
     def get_master_tickets_by_ward(self, ward: str) -> List[dict]:
-        if self.use_mock:
-            self._load_mock_store()
-            return [t for t in self._mock_master_tickets.values() if t.get("ward") == ward]
-        else:
-            return []
+        self._load_mock_store()
+        if not self.use_mock:
+            try:
+                response = self.tickets_table.scan()
+                items = response.get("Items", [])
+                if items:
+                    parsed = [json.loads(json.dumps(t, default=float)) for t in items]
+                    return [t for t in parsed if t.get("ward") == ward]
+            except Exception as e:
+                print(f"[!] DynamoDB scan error: {e}", flush=True)
+        return [t for t in self._mock_master_tickets.values() if t.get("ward") == ward]
 
     def create_master_ticket(self, data: dict) -> str:
         ticket_id = f"MT-{str(uuid.uuid4())[:6].upper()}"
@@ -100,32 +115,33 @@ class DatabaseRepository:
             self._mock_master_tickets[ticket_id] = data
             self._save_mock_store()
         else:
-            self.tickets_table.put_item(Item=data)
+            try:
+                from decimal import Decimal
+                dynamo_data = json.loads(json.dumps(data), parse_float=Decimal)
+                self.tickets_table.put_item(Item=dynamo_data)
+            except Exception as e:
+                print(f"[!] DynamoDB create_master_ticket error: {e}", flush=True)
+            self._mock_master_tickets[ticket_id] = data
+            self._save_mock_store()
             
         return ticket_id
 
     def update_master_ticket(self, ticket_id: str, updates: dict):
-        if self.use_mock:
-            self._load_mock_store()
-            if ticket_id in self._mock_master_tickets:
-                self._mock_master_tickets[ticket_id].update(updates)
-                self._save_mock_store()
-        else:
-            pass
+        self._load_mock_store()
+        if ticket_id in self._mock_master_tickets:
+            self._mock_master_tickets[ticket_id].update(updates)
+            self._save_mock_store()
 
     def add_complaint_to_master_ticket(self, ticket_id: str, complaint_id: str):
-        if self.use_mock:
-            self._load_mock_store()
-            if ticket_id in self._mock_master_tickets:
-                t = self._mock_master_tickets[ticket_id]
-                t["impact_count"] = t.get("impact_count", 1) + 1
-                if "complaint_ids" not in t:
-                    t["complaint_ids"] = []
-                if complaint_id not in t["complaint_ids"]:
-                    t["complaint_ids"].append(complaint_id)
-                self._save_mock_store()
-        else:
-            pass
+        self._load_mock_store()
+        if ticket_id in self._mock_master_tickets:
+            t = self._mock_master_tickets[ticket_id]
+            t["impact_count"] = t.get("impact_count", 1) + 1
+            if "complaint_ids" not in t:
+                t["complaint_ids"] = []
+            if complaint_id not in t["complaint_ids"]:
+                t["complaint_ids"].append(complaint_id)
+            self._save_mock_store()
 
     def get_all_master_tickets(
         self,
