@@ -14,22 +14,26 @@ MOCK_DB_FILE = os.path.join(os.path.dirname(__file__), "mock_db_store.json")
 class DatabaseRepository:
     def __init__(self):
         self.use_mock = USE_MOCK_DB
-        if self.use_mock:
-            self._mock_complaints = {}
-            self._mock_master_tickets = {}
-            self._mock_officers = {
-                "officer1": {"officer_id": "officer1", "ward": "151", "role": "ward_officer", "password_hash": "mockhash"}
-            }
-            self._load_mock_store()
-        else:
+        self._mock_complaints = {}
+        self._mock_master_tickets = {}
+        self._mock_officers = {
+            "officer1": {"officer_id": "officer1", "ward": "151", "role": "ward_officer", "password_hash": "mockhash"}
+        }
+        self._load_mock_store()
+
+        if not self.use_mock:
             print("Connecting to real AWS DynamoDB...")
-            import boto3
-            region = os.getenv("AWS_REGION", "us-east-1")
-            self.dynamodb = boto3.resource('dynamodb', region_name=region)
-            c_table = os.getenv("DYNAMODB_TABLE_COMPLAINTS") or "civicfix_complaints"
-            t_table = os.getenv("DYNAMODB_TABLE_MASTER_TICKETS") or "civicfix_master_tickets"
-            self.complaints_table = self.dynamodb.Table(c_table)
-            self.tickets_table = self.dynamodb.Table(t_table)
+            try:
+                import boto3
+                region = os.getenv("AWS_REGION", "us-east-1")
+                self.dynamodb = boto3.resource('dynamodb', region_name=region)
+                c_table = os.getenv("DYNAMODB_TABLE_COMPLAINTS") or "civicfix_complaints"
+                t_table = os.getenv("DYNAMODB_TABLE_MASTER_TICKETS") or "civicfix_master_tickets"
+                self.complaints_table = self.dynamodb.Table(c_table)
+                self.tickets_table = self.dynamodb.Table(t_table)
+            except Exception as e:
+                print(f"[!] DynamoDB init connection failed: {e}. Falling back to local store.", flush=True)
+                self.use_mock = True
 
     def _load_mock_store(self):
         if os.path.exists(MOCK_DB_FILE):
