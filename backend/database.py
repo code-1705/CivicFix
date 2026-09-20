@@ -129,6 +129,16 @@ class DatabaseRepository:
         if complaint_id in self._mock_complaints:
             self._mock_complaints[complaint_id].update(updates)
             self._save_mock_store()
+        if not self.use_mock:
+            try:
+                from decimal import Decimal
+                comp = self.get_complaint(complaint_id) or {}
+                comp.update(updates)
+                comp["complaint_id"] = complaint_id
+                dynamo_data = json.loads(json.dumps(comp), parse_float=Decimal)
+                self.complaints_table.put_item(Item=dynamo_data)
+            except Exception as e:
+                print(f"[!] DynamoDB update_complaint error: {e}", flush=True)
 
     # --- Master Tickets ---
     def get_master_tickets_by_ward(self, ward: str) -> List[dict]:
@@ -174,7 +184,9 @@ class DatabaseRepository:
         if not self.use_mock:
             try:
                 from decimal import Decimal
-                full_ticket = self._mock_master_tickets.get(ticket_id, updates)
+                full_ticket = self._mock_master_tickets.get(ticket_id) or self.get_master_ticket(ticket_id) or {}
+                full_ticket.update(updates)
+                full_ticket["master_ticket_id"] = ticket_id
                 dynamo_data = json.loads(json.dumps(full_ticket), parse_float=Decimal)
                 self.tickets_table.put_item(Item=dynamo_data)
             except Exception as e:
@@ -182,6 +194,7 @@ class DatabaseRepository:
 
     def add_complaint_to_master_ticket(self, ticket_id: str, complaint_id: str):
         self._load_mock_store()
+        ticket = None
         if ticket_id in self._mock_master_tickets:
             t = self._mock_master_tickets[ticket_id]
             t["impact_count"] = t.get("impact_count", 1) + 1
@@ -190,6 +203,23 @@ class DatabaseRepository:
             if complaint_id not in t["complaint_ids"]:
                 t["complaint_ids"].append(complaint_id)
             self._save_mock_store()
+            ticket = t
+        if not self.use_mock:
+            try:
+                from decimal import Decimal
+                if not ticket:
+                    ticket = self.get_master_ticket(ticket_id)
+                    if ticket:
+                        ticket["impact_count"] = ticket.get("impact_count", 1) + 1
+                        if "complaint_ids" not in ticket:
+                            ticket["complaint_ids"] = []
+                        if complaint_id not in ticket["complaint_ids"]:
+                            ticket["complaint_ids"].append(complaint_id)
+                if ticket:
+                    dynamo_data = json.loads(json.dumps(ticket), parse_float=Decimal)
+                    self.tickets_table.put_item(Item=dynamo_data)
+            except Exception as e:
+                print(f"[!] DynamoDB add_complaint_to_master_ticket error: {e}", flush=True)
 
     def get_all_master_tickets(
         self,
