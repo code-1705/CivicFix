@@ -185,9 +185,14 @@ class DatabaseRepository:
         else:
             try:
                 response = self.tickets_table.scan()
-                tickets = response.get("Items", [])
-            except Exception:
+                items = response.get("Items", [])
+                tickets = [dynamo_to_dict(t) for t in items]
+            except Exception as e:
+                print(f"[!] DynamoDB scan tickets error: {e}", flush=True)
                 tickets = []
+            if not tickets:
+                self._load_mock_store()
+                tickets = list(self._mock_master_tickets.values())
 
         enriched = []
         for t in tickets:
@@ -276,9 +281,14 @@ class DatabaseRepository:
         else:
             try:
                 response = self.tickets_table.scan()
-                tickets = response.get("Items", [])
-            except Exception:
+                items = response.get("Items", [])
+                tickets = [dynamo_to_dict(t) for t in items]
+            except Exception as e:
+                print(f"[!] DynamoDB scan pins error: {e}", flush=True)
                 tickets = []
+            if not tickets:
+                self._load_mock_store()
+                tickets = list(self._mock_master_tickets.values())
 
         pins = []
         for t in tickets:
