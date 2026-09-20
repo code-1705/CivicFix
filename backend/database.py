@@ -38,7 +38,17 @@ class DatabaseRepository:
             try:
                 import boto3
                 region = os.getenv("AWS_REGION", "us-east-1")
-                self.dynamodb = boto3.resource('dynamodb', region_name=region)
+                aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+                aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+                if aws_access_key and aws_secret_key:
+                    self.dynamodb = boto3.resource(
+                        'dynamodb',
+                        region_name=region,
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key
+                    )
+                else:
+                    self.dynamodb = boto3.resource('dynamodb', region_name=region)
                 c_table = os.getenv("DYNAMODB_TABLE_COMPLAINTS") or "civicfix_complaints"
                 t_table = os.getenv("DYNAMODB_TABLE_MASTER_TICKETS") or "civicfix_master_tickets"
                 self.complaints_table = self.dynamodb.Table(c_table)

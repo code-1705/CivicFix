@@ -19,7 +19,17 @@ class StorageService:
         if self.use_s3:
             try:
                 import boto3
-                self.s3_client = boto3.client("s3", region_name=AWS_REGION)
+                aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+                aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+                if aws_access_key and aws_secret_key:
+                    self.s3_client = boto3.client(
+                        "s3",
+                        region_name=AWS_REGION,
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key
+                    )
+                else:
+                    self.s3_client = boto3.client("s3", region_name=AWS_REGION)
                 print(f"[*] S3 Storage enabled. Target bucket: {S3_BUCKET_NAME}", flush=True)
             except Exception as e:
                 print(f"[!] Failed to initialize S3 client: {e}. Falling back to local storage.", flush=True)
