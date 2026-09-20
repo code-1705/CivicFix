@@ -11,6 +11,18 @@ load_dotenv()
 USE_MOCK_DB = os.getenv("USE_MOCK_DB", "true").lower() == "true"
 MOCK_DB_FILE = os.path.join(os.path.dirname(__file__), "mock_db_store.json")
 
+def dynamo_to_dict(item):
+    if not item:
+        return item
+    import decimal
+    def _default(obj):
+        if isinstance(obj, decimal.Decimal):
+            return int(obj) if obj % 1 == 0 else float(obj)
+        if isinstance(obj, set):
+            return list(obj)
+        return str(obj)
+    return json.loads(json.dumps(item, default=_default))
+
 class DatabaseRepository:
     def __init__(self):
         self.use_mock = USE_MOCK_DB
@@ -75,18 +87,6 @@ class DatabaseRepository:
             self._save_mock_store()
             
         return complaint_id
-
-def dynamo_to_dict(item):
-    if not item:
-        return item
-    import decimal
-    def _default(obj):
-        if isinstance(obj, decimal.Decimal):
-            return int(obj) if obj % 1 == 0 else float(obj)
-        if isinstance(obj, set):
-            return list(obj)
-        return str(obj)
-    return json.loads(json.dumps(item, default=_default))
 
     def get_complaint(self, complaint_id: str) -> Optional[dict]:
         self._load_mock_store()
