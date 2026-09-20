@@ -45,6 +45,8 @@ interface Ticket {
   lng: number;
   sla_deadline: string;
   resolved_at?: string;
+  resolved_image_url?: string;
+  resolved_image_urls?: string[];
   complaint_ids: string[];
   coupled_images?: string[];
   relay_history?: RelayRecord[];
@@ -553,7 +555,43 @@ export default function OfficerDashboard() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-slate-400 italic">No images attached</p>
+                      <p className="text-xs text-slate-400 italic">No citizen photos attached</p>
+                    )}
+
+                    {/* Official Resolution Proof Photos */}
+                    {ticket.status === "resolved" && ((ticket.resolved_image_urls && ticket.resolved_image_urls.length > 0) || ticket.resolved_image_url) && (
+                      <div className="pt-3 border-t border-slate-100">
+                        <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Official Resolution Proof (After)
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          {(ticket.resolved_image_urls && ticket.resolved_image_urls.length > 0
+                            ? ticket.resolved_image_urls
+                            : [ticket.resolved_image_url]
+                          ).filter(Boolean).map((imgUrl, rIdx) => {
+                            const fullProofUrl = getFullImageUrl(imgUrl);
+                            return (
+                              <a
+                                key={rIdx}
+                                href={fullProofUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-xl overflow-hidden border-2 border-emerald-400/60 shadow-sm hover:opacity-85 transition-opacity"
+                              >
+                                <img
+                                  src={fullProofUrl}
+                                  alt={`Resolution Proof ${rIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = "none";
+                                  }}
+                                />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
 
                     {/* Relay Audit History */}

@@ -28,7 +28,7 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
     volumes:
-      - backend_uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
       - ./backend/mock_db_store.json:/app/mock_db_store.json
     restart: unless-stopped
     healthcheck:
