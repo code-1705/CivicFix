@@ -76,6 +76,18 @@ class DatabaseRepository:
             
         return complaint_id
 
+def dynamo_to_dict(item):
+    if not item:
+        return item
+    import decimal
+    def _default(obj):
+        if isinstance(obj, decimal.Decimal):
+            return int(obj) if obj % 1 == 0 else float(obj)
+        if isinstance(obj, set):
+            return list(obj)
+        return str(obj)
+    return json.loads(json.dumps(item, default=_default))
+
     def get_complaint(self, complaint_id: str) -> Optional[dict]:
         self._load_mock_store()
         if not self.use_mock:
@@ -83,11 +95,22 @@ class DatabaseRepository:
                 response = self.complaints_table.get_item(Key={"complaint_id": complaint_id})
                 item = response.get("Item")
                 if item:
-                    # Convert Decimals back to float/int
-                    return json.loads(json.dumps(item, default=float))
+                    return dynamo_to_dict(item)
             except Exception as e:
                 print(f"[!] DynamoDB get_item error: {e}", flush=True)
         return self._mock_complaints.get(complaint_id)
+
+    def get_master_ticket(self, ticket_id: str) -> Optional[dict]:
+        self._load_mock_store()
+        if not self.use_mock:
+            try:
+                response = self.tickets_table.get_item(Key={"master_ticket_id": ticket_id})
+                item = response.get("Item")
+                if item:
+                    return dynamo_to_dict(item)
+            except Exception as e:
+                print(f"[!] DynamoDB get_master_ticket error: {e}", flush=True)
+        return self._mock_master_tickets.get(ticket_id)
 
     def update_complaint(self, complaint_id: str, updates: dict):
         self._load_mock_store()

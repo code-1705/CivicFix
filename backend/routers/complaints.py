@@ -75,13 +75,7 @@ async def get_status(complaint_id: str):
         
     # If it has a master ticket, fetch it for community impact count
     mt_id = complaint.get("master_ticket_id")
-    mt_data = None
-    if mt_id:
-        if db.use_mock:
-            mt_data = db._mock_master_tickets.get(mt_id)
-        else:
-            response = db.tickets_table.get_item(Key={"master_ticket_id": mt_id})
-            mt_data = response.get("Item")
+    mt_data = db.get_master_ticket(mt_id) if mt_id else None
             
     return {
         "complaint": complaint,
