@@ -8,6 +8,8 @@ services:
     container_name: civicfix-backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - USE_MOCK_AI=${USE_MOCK_AI:-false}
       - USE_MOCK_DB=${USE_MOCK_DB:-true}
@@ -19,8 +21,15 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
+      - DYNAMODB_TABLE_COMPLAINTS=${DYNAMODB_TABLE_COMPLAINTS:-civicfix_complaints}
+      - DYNAMODB_TABLE_MASTER_TICKETS=${DYNAMODB_TABLE_MASTER_TICKETS:-civicfix_master_tickets}
+      - ENABLE_TWILIO_SMS=${ENABLE_TWILIO_SMS:-false}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
     volumes:
       - backend_uploads:/app/uploads
+      - ./backend/mock_db_store.json:/app/mock_db_store.json
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

@@ -24,9 +24,12 @@ class DatabaseRepository:
         else:
             print("Connecting to real AWS DynamoDB...")
             import boto3
-            self.dynamodb = boto3.resource('dynamodb', region_name=os.getenv("AWS_REGION"))
-            self.complaints_table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE_COMPLAINTS"))
-            self.tickets_table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE_MASTER_TICKETS"))
+            region = os.getenv("AWS_REGION", "us-east-1")
+            self.dynamodb = boto3.resource('dynamodb', region_name=region)
+            c_table = os.getenv("DYNAMODB_TABLE_COMPLAINTS") or "civicfix_complaints"
+            t_table = os.getenv("DYNAMODB_TABLE_MASTER_TICKETS") or "civicfix_master_tickets"
+            self.complaints_table = self.dynamodb.Table(c_table)
+            self.tickets_table = self.dynamodb.Table(t_table)
 
     def _load_mock_store(self):
         if os.path.exists(MOCK_DB_FILE):
