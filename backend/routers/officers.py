@@ -68,23 +68,20 @@ async def resolve_ticket(
     proof_image: Optional[UploadFile] = File(None),
     current_officer: dict = Depends(get_current_officer)
 ):
-    # Fetch Master Ticket
-    if db.use_mock:
-        ticket = db._mock_master_tickets.get(master_ticket_id)
-    else:
-        response = db.tickets_table.get_item(Key={"master_ticket_id": master_ticket_id})
-        ticket = response.get("Item")
-        
+    # Fetch Master Ticket safely
+    ticket = db.get_master_ticket(master_ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
         
     # Auth check
-    if current_officer["wardNo"] != ticket["ward"]:
+    if current_officer["wardNo"] != str(ticket.get("ward")):
         raise HTTPException(status_code=403, detail="Forbidden. You cannot resolve tickets for other wards.")
         
     # Geofence check (100m tolerance)
     override_bool = str(override).lower() in ("true", "1", "yes")
-    distance = calculate_distance(lat, lng, ticket["lat"], ticket["lng"])
+    ticket_lat = float(ticket["lat"])
+    ticket_lng = float(ticket["lng"])
+    distance = calculate_distance(float(lat), float(lng), ticket_lat, ticket_lng)
     if distance > 100 and not override_bool:
         raise HTTPException(status_code=400, detail=f"Geofence Failed: You are {int(distance)}m away from the issue. Must be within 100m.")
         
@@ -106,31 +103,25 @@ async def resolve_ticket(
 
     # Update Status
     resolved_time = datetime.now(timezone.utc).isoformat()
-    if db.use_mock:
-        db.update_master_ticket(master_ticket_id, {
+    resolution_updates = {
+        "status": "resolved",
+        "resolved_at": resolved_time,
+        "resolved_image_url": primary_image_url,
+        "resolved_image_urls": resolved_image_urls
+    }
+    db.update_master_ticket(master_ticket_id, resolution_updates)
+    
+    # Also update associated complaints and notify citizens via SMS
+    for cid in ticket.get("complaint_ids", []):
+        db.update_complaint(cid, {
             "status": "resolved",
             "resolved_at": resolved_time,
             "resolved_image_url": primary_image_url,
             "resolved_image_urls": resolved_image_urls
         })
-        
-        # Also update associated complaints and notify citizens via SMS
-        for cid in db._mock_master_tickets[master_ticket_id].get("complaint_ids", []):
-            db.update_complaint(cid, {
-                "status": "resolved",
-                "resolved_at": resolved_time,
-                "resolved_image_url": primary_image_url,
-                "resolved_image_urls": resolved_image_urls
-            })
-            complaint = db.get_complaint(cid)
-            if complaint and complaint.get("mobile"):
-                send_sms(
-                    complaint["mobile"],
-                    f"{cid} resolved"
-                )
-    else:
-        # DynamoDB update expression
-        pass
+        complaint = db.get_complaint(cid)
+        if complaint and complaint.get("mobile"):
+            send_sms(complaint["mobile"], f"{cid} resolved")
         
     return {
         "status": "resolved", 

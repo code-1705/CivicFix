@@ -158,6 +158,14 @@ class DatabaseRepository:
         if ticket_id in self._mock_master_tickets:
             self._mock_master_tickets[ticket_id].update(updates)
             self._save_mock_store()
+        if not self.use_mock:
+            try:
+                from decimal import Decimal
+                full_ticket = self._mock_master_tickets.get(ticket_id, updates)
+                dynamo_data = json.loads(json.dumps(full_ticket), parse_float=Decimal)
+                self.tickets_table.put_item(Item=dynamo_data)
+            except Exception as e:
+                print(f"[!] DynamoDB update_master_ticket error: {e}", flush=True)
 
     def add_complaint_to_master_ticket(self, ticket_id: str, complaint_id: str):
         self._load_mock_store()
@@ -315,28 +323,26 @@ class DatabaseRepository:
         officer_id: str,
         notes: Optional[str] = None
     ) -> Optional[dict]:
-        if self.use_mock:
-            self._load_mock_store()
-            if master_ticket_id not in self._mock_master_tickets:
-                return None
-            ticket = self._mock_master_tickets[master_ticket_id]
-            from_dept = ticket.get("assigned_department") or ticket.get("category", "Public Works")
-
-            relay_entry = {
-                "from_department": from_dept,
-                "to_department": to_department,
-                "relayed_by": officer_id,
-                "relayed_at": datetime.now(timezone.utc).isoformat(),
-                "notes": notes or "Department handover for technical execution"
-            }
-            if "relay_history" not in ticket:
-                ticket["relay_history"] = []
-            ticket["relay_history"].append(relay_entry)
-            ticket["assigned_department"] = to_department
-            self._save_mock_store()
-            return ticket
-        else:
+        self._load_mock_store()
+        ticket = self.get_master_ticket(master_ticket_id)
+        if not ticket:
             return None
+        from_dept = ticket.get("assigned_department") or ticket.get("category", "Public Works")
+
+        relay_entry = {
+            "from_department": from_dept,
+            "to_department": to_department,
+            "relayed_by": officer_id,
+            "relayed_at": datetime.now(timezone.utc).isoformat(),
+            "notes": notes or "Department handover for technical execution"
+        }
+        if "relay_history" not in ticket:
+            ticket["relay_history"] = []
+        ticket["relay_history"].append(relay_entry)
+        ticket["assigned_department"] = to_department
+
+        self.update_master_ticket(master_ticket_id, ticket)
+        return ticket
 
 # Create a singleton instance to be imported by routes
 db = DatabaseRepository()
