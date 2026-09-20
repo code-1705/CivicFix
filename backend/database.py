@@ -89,28 +89,30 @@ class DatabaseRepository:
         return complaint_id
 
     def get_complaint(self, complaint_id: str) -> Optional[dict]:
-        self._load_mock_store()
-        if not self.use_mock:
+        if self.use_mock:
+            self._load_mock_store()
+            return self._mock_complaints.get(complaint_id)
+        else:
             try:
                 response = self.complaints_table.get_item(Key={"complaint_id": complaint_id})
                 item = response.get("Item")
-                if item:
-                    return dynamo_to_dict(item)
+                return dynamo_to_dict(item) if item else None
             except Exception as e:
                 print(f"[!] DynamoDB get_item error: {e}", flush=True)
-        return self._mock_complaints.get(complaint_id)
+                return None
 
     def get_master_ticket(self, ticket_id: str) -> Optional[dict]:
-        self._load_mock_store()
-        if not self.use_mock:
+        if self.use_mock:
+            self._load_mock_store()
+            return self._mock_master_tickets.get(ticket_id)
+        else:
             try:
                 response = self.tickets_table.get_item(Key={"master_ticket_id": ticket_id})
                 item = response.get("Item")
-                if item:
-                    return dynamo_to_dict(item)
+                return dynamo_to_dict(item) if item else None
             except Exception as e:
                 print(f"[!] DynamoDB get_master_ticket error: {e}", flush=True)
-        return self._mock_master_tickets.get(ticket_id)
+                return None
 
     def update_complaint(self, complaint_id: str, updates: dict):
         self._load_mock_store()
@@ -120,17 +122,18 @@ class DatabaseRepository:
 
     # --- Master Tickets ---
     def get_master_tickets_by_ward(self, ward: str) -> List[dict]:
-        self._load_mock_store()
-        if not self.use_mock:
+        if self.use_mock:
+            self._load_mock_store()
+            return [t for t in self._mock_master_tickets.values() if str(t.get("ward")) == str(ward)]
+        else:
             try:
                 response = self.tickets_table.scan()
                 items = response.get("Items", [])
-                if items:
-                    parsed = [json.loads(json.dumps(t, default=float)) for t in items]
-                    return [t for t in parsed if t.get("ward") == ward]
+                parsed = [dynamo_to_dict(t) for t in items]
+                return [t for t in parsed if str(t.get("ward")) == str(ward)]
             except Exception as e:
                 print(f"[!] DynamoDB scan error: {e}", flush=True)
-        return [t for t in self._mock_master_tickets.values() if t.get("ward") == ward]
+                return []
 
     def create_master_ticket(self, data: dict) -> str:
         ticket_id = f"MT-{str(uuid.uuid4())[:6].upper()}"
@@ -198,9 +201,6 @@ class DatabaseRepository:
             except Exception as e:
                 print(f"[!] DynamoDB scan tickets error: {e}", flush=True)
                 tickets = []
-            if not tickets:
-                self._load_mock_store()
-                tickets = list(self._mock_master_tickets.values())
 
         enriched = []
         for t in tickets:
@@ -294,9 +294,6 @@ class DatabaseRepository:
             except Exception as e:
                 print(f"[!] DynamoDB scan pins error: {e}", flush=True)
                 tickets = []
-            if not tickets:
-                self._load_mock_store()
-                tickets = list(self._mock_master_tickets.values())
 
         pins = []
         for t in tickets:

@@ -54,14 +54,9 @@ out/
 build/
 .vercel
 
-# Uploads & Media (whitelist seed demo images)
+# Uploads & Media (zero mock images, user media stays in S3 / disk)
 backend/uploads/*
 !backend/uploads/.gitkeep
-!backend/uploads/sample_*.jpg
-!backend/uploads/8dd5f16c21.jpeg
-!backend/uploads/resolved_28b698c3c4.jpg
-!backend/uploads/resolved_d1f72172d9.jpg
-!backend/uploads/resolved_24dbba1263.jpg
 
 # IDEs & System
 .vscode/
